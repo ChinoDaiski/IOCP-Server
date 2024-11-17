@@ -9,36 +9,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="소스 파일\Packet">
-      <UniqueIdentifier>{857a9e37-8f57-47ed-84d5-01cd8dd2c2f2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\RingBuffer">
-      <UniqueIdentifier>{54e89be1-fcb0-4fa6-825e-1380e89005a8}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\Content">
-      <UniqueIdentifier>{c7a98c55-52fc-4aa4-bd5e-b4804c82340b}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Packet.cpp">
-      <Filter>소스 파일\Packet</Filter>
-    </ClCompile>
-    <ClCompile Include="Content.cpp">
-      <Filter>소스 파일\Content</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Packet.h">
-      <Filter>소스 파일\Packet</Filter>
-    </ClInclude>
     <ClInclude Include="RingBuffer.h">
-      <Filter>소스 파일\RingBuffer</Filter>
-    </ClInclude>
-    <ClInclude Include="Content.h">
-      <Filter>소스 파일\Content</Filter>
+      <Filter>소스 파일</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
