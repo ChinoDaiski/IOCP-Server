@@ -38,6 +38,11 @@ public:
     UINT32 id;
 
     UINT32 IOCount;
+
+    bool bSending;
+
+
+    UINT32 SendingCount;
 };
 
 SOCKET g_listenSocket; 
@@ -69,7 +74,7 @@ int main(void)
     // 프로세서 갯수 미만으로 IOCP Running 스레드의 갯수를 제한하면서 테스트 해볼 것.
     
     // 입출력 완료 포트 생성
-    g_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 3);
+    g_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 2);
     if (g_hIOCP == NULL)
     {
         std::cerr << "INVALID_HANDLE : g_hIOCP\n";
@@ -161,6 +166,16 @@ int main(void)
     return 0;
 }
 
+UINT32 ReleaseSession(CSession* pSession)
+{
+    if (pSession->sock != INVALID_SOCKET)
+    {
+        closesocket(pSession->sock);
+        pSession->sock = INVALID_SOCKET;
+    }
+
+    return InterlockedDecrement(&pSession->IOCount);
+}
 
 
 // 작업자 스레드 함수
@@ -168,6 +183,7 @@ unsigned int WINAPI WorkerThread(void* pArg)
 {
     int retval;
     int error;
+    UINT32 IOCount;
 
     // 비동기 입출력 완료 기다리기
     DWORD transferredDataLen;
@@ -187,44 +203,24 @@ unsigned int WINAPI WorkerThread(void* pArg)
 
         error = WSAGetLastError();
 
-        // 예외 처리 - GQCS가 실패했거나, cbTransferred이 0인 경우(rst가 온 경우)
-        if (retval == FALSE || transferredDataLen == 0 )
+        // PQCS로 넣은 완료 통지값(0, 0, NULL)이 온 경우. 즉, 내(main 스레드)가 먼저 끊은 경우
+        // 완료통지가 있던 말던 스레드를 종료.
+        if ((transferredDataLen == 0 && pSession == 0 && pOverlapped == nullptr))
+            break;
+
+        // 예외 처리 - GQCS가 실패한 경우, send,recv 하던중 문제가 생겨서 closesocket을 해서 해당 소켓을 사용하는 완료통지가 모두 실패한 경우이다.
+        // cbTransferred이 0인 경우(rst가 온 경우) <- 이건 send 쪽에서 처리
+        if (retval == FALSE)
         {
-            // PQCS로 넣은 완료 통지값(0, 0, NULL)이 온 경우. 즉, 내가 먼저 끊은 경우
-            if (pSession == 0 && pOverlapped == nullptr)
-            {
-                // while문을 빠져나간다. 이러면 완료통지가 남아 있어도 스레드는 종료된다.
-               
-                // 완료통지 처리 이후 IO Count 1 감소
-                pSession->IOCount--;
+            // 소켓이 유효하다면 closesocket 하고, 세션의 IO Count를 1 감소한다. 
+            IOCount = ReleaseSession(pSession);
 
-                // IO Count가 0인 경우 
-                if (pSession->IOCount == 0)
-                {
-                    // 소켓 닫기
-                    closesocket(pSession->sock);
+            // IO Count가 0이라면 세션을 지움.
+            if (IOCount == 0)
+                delete pSession;
 
-                    // 세션 삭제
-                    delete pSession;
-                }
-                else
-                {
-                    // 이 부분은 확실히 에러이다. 삭제되어야하는 상황에서 IOCount가 0이 아니니깐. 
-                    // 완료통지를 다 처리 안했는데 종료 통지가 온 경우, 이럴 수 있다. 
-                    // 그래도 이 부분을 보기 위해서 debugbreak를 남김.
-                    DebugBreak();
-                }
-                break;
-            }
-
-            // 상대방에서 먼저 끊어서 이쪽에서 확인해보니 네트워크가 더 이상 없는 경우
-            if (error == ERROR_NETNAME_DELETED)
-            {
-                continue;
-            }
-
-            // 상대 측에서 먼저 끊은 경우나 진짜 에러일 것이다. 확인 필요.
-            DebugBreak();
+            // IO Count가 0이 아니라면 완료통지가 남아 있으니 GQCS에서 완료통지를 다시 가져오도록 continue한다.
+            continue;
         }
 
         // recv 완료 통지가 온 경우
@@ -237,10 +233,15 @@ unsigned int WINAPI WorkerThread(void* pArg)
             char temp[512];
             pSession->recvQ.Dequeue(temp, transferredDataLen);
 
+            // 여기서 컨텐츠 처리가 들어감.
+            // 컨텐츠 처리를 하면서 sendQ에 데이터를 삽입. SendPost 함수 호출시 sendQ에 넣은 데이터를 보낼 수 있다면 보낸다.
+            
+
             pSession->sendQ.Enqueue(temp, transferredDataLen);
 
-            // send 처리
-            SendPost(pSession);
+            if (!pSession->bSending)
+                // send 처리
+                SendPost(pSession);
 
             // recv 처리
             RecvPost(pSession);
@@ -250,17 +251,23 @@ unsigned int WINAPI WorkerThread(void* pArg)
         else if (pOverlapped == &pSession->overlappedSend) {
             // 보내는 것을 완료 했으므로 sendQ에 있는 데이터를 제거
             pSession->sendQ.MoveFront(transferredDataLen);
+
+            // 만약 sendQ에 데이터가 있다면
+            if (pSession->sendQ.GetUseSize() != 0)
+                // send 처리
+                SendPost(pSession);
+            // 만약 sendQ에 데이터가 없다면
+            else
+                // send하고 있지 않으니깐 sending을 false로 변환.
+                pSession->bSending = false;
         }
 
         // 완료통지 처리 이후 IO Count 1 감소
-        pSession->IOCount--;
+        IOCount = InterlockedDecrement(&pSession->IOCount);
 
-        // IO Count가 0인 경우 
-        if (pSession->IOCount == 0)
+        // IO Count가 0인 경우, 모든 완료통지를 처리했으므로 세션을 삭제해도 무방.
+        if (IOCount == 0)
         {
-            // 소켓 닫기
-            closesocket(pSession->sock);
-
             // 세션 삭제
             delete pSession;
         }
@@ -318,9 +325,13 @@ unsigned int WINAPI AcceptThread(void* pArg)
         pSession->id = g_id;
         g_id++;
 
-        // IO Count 부야
+        // IO Count 부여, 초기화 할 시기로 아직 등록도 전이니 0으로 설정
         pSession->IOCount = 0;
 
+        // send 1회 제한
+        pSession->bSending = false;
+
+        pSession->SendingCount = 0;
 
 
         // 소켓과 입출력 완료 포트 연결 - 새로 연견될 소켓을 key를 해당 소켓과 연결된 세션 구조체의 포인터로 하여 IOCP와 연결한다.
@@ -334,9 +345,14 @@ unsigned int WINAPI AcceptThread(void* pArg)
     return 0;
 }
 
-
+// sendQ에 데이터를 넣고, WSASend를 호출
 void SendPost(CSession* pSession)
 {
+    UINT32 a = InterlockedIncrement(&pSession->SendingCount);
+    if (a == 2)
+        DebugBreak();
+
+
     int retval;
     int error;
 
@@ -360,7 +376,10 @@ void SendPost(CSession* pSession)
     }
 
     DWORD flags{};
-    pSession->IOCount++;
+
+    InterlockedIncrement(&pSession->IOCount);
+
+    pSession->bSending = true;
     retval = WSASend(pSession->sock, wsaBuf, 2, NULL, flags, &pSession->overlappedSend, NULL);
 
     error = WSAGetLastError();
@@ -371,6 +390,8 @@ void SendPost(CSession* pSession)
         else
             DebugBreak();
     }
+
+    InterlockedDecrement(&pSession->SendingCount);
 }
 
 void RecvPost(CSession* pSession)
@@ -386,7 +407,8 @@ void RecvPost(CSession* pSession)
     recvBuf[1].buf = pSession->recvQ.GetBufferPtr();
     recvBuf[1].len = pSession->recvQ.GetBufferCapacity() - pSession->recvQ.DirectEnqueueSize();
    
-    pSession->IOCount++;
+    InterlockedIncrement(&pSession->IOCount);
+
     // 비동기 recv 처리를 위해 먼저 recv를 걸어둠. 받은 데이터는 wsaBuf에 등록한 메모리에 채워질 예정.
     retVal = WSARecv(pSession->sock, recvBuf, 2, NULL, &flags, &pSession->overlappedRecv, NULL);
 
