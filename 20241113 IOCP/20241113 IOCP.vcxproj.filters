@@ -9,15 +9,69 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="소스 파일\00. Main">
+      <UniqueIdentifier>{5f0d5509-c256-4c16-8533-f708110a65a2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\01. RingBuffer">
+      <UniqueIdentifier>{24dfc853-5551-4211-bef0-a38547508930}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\02. Packet">
+      <UniqueIdentifier>{b7d72369-b10d-430c-aedf-bc6beddc1d31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\03. ServerLib">
+      <UniqueIdentifier>{94eced6c-20da-473f-b81d-1257d31bad49}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\04. Content">
+      <UniqueIdentifier>{a806c415-9fa9-4192-a164-4368488c6b21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\03. ServerLib\Interface">
+      <UniqueIdentifier>{559ced49-8c86-4cf6-ac65-ed888e708688}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\04. Content\Interface">
+      <UniqueIdentifier>{abfadd3d-f66d-4f7a-b81c-8cc78fbaa5b5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\05. Session">
+      <UniqueIdentifier>{3c88d10d-4e0d-4a91-8a5e-a021a5b77233}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Content.cpp">
+      <Filter>소스 파일\04. Content</Filter>
+    </ClCompile>
+    <ClCompile Include="ServerLib.cpp">
+      <Filter>소스 파일\03. ServerLib</Filter>
+    </ClCompile>
+    <ClCompile Include="Packet.cpp">
+      <Filter>소스 파일\02. Packet</Filter>
+    </ClCompile>
     <ClCompile Include="main.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\00. Main</Filter>
+    </ClCompile>
+    <ClCompile Include="Session.cpp">
+      <Filter>소스 파일\05. Session</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Content.h">
+      <Filter>소스 파일\04. Content</Filter>
+    </ClInclude>
+    <ClInclude Include="ServerLib.h">
+      <Filter>소스 파일\03. ServerLib</Filter>
+    </ClInclude>
+    <ClInclude Include="Packet.h">
+      <Filter>소스 파일\02. Packet</Filter>
+    </ClInclude>
     <ClInclude Include="RingBuffer.h">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\01. RingBuffer</Filter>
+    </ClInclude>
+    <ClInclude Include="IServer.h">
+      <Filter>소스 파일\03. ServerLib\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="IContent.h">
+      <Filter>소스 파일\04. Content\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="Session.h">
+      <Filter>소스 파일\05. Session</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,9 +1,9 @@
 #pragma once
 
+#define NOMINMAX
 #include <Windows.h>
 #include <cstring>
 #include <type_traits>
-//#include "CustomException.h"
 
 class CPacket
 {
@@ -81,10 +81,9 @@ public:
 		// 패킷에 할당되어 있는 최대 사이즈 보다 더 많은 값이 들어가는지 검사
 		if ((m_iRear + sizeof(T)) > m_iBufferSize)
 		{
-			/*StackTraceLogger sw;
-			sw.ShowCallstack();
-			throw std::runtime_error("패킷에 할당되어 있는 최대 사이즈 보다 더 많은 값이 들어가는지 검사");*/
-			DebugBreak();
+			//StackTraceLogger sw;
+			//sw.ShowCallstack();
+			//throw std::runtime_error("패킷에 할당되어 있는 최대 사이즈 보다 더 많은 값이 들어가는지 검사");
 		}
 
 		if (!std::is_arithmetic<T>::value)
@@ -120,10 +119,9 @@ public:
 		// 넣어진 값 이상으로 뺴려고 시도
 		if ((m_iFront + sizeof(T)) > m_iRear)
 		{
-			/*StackTraceLogger sw;
-			sw.ShowCallstack();
-			throw std::runtime_error("넣어진 값 이상으로 뺴려고 시도");*/
-			DebugBreak();
+			//StackTraceLogger sw;
+			//sw.ShowCallstack();
+			//throw std::runtime_error("넣어진 값 이상으로 뺴려고 시도");
 		}
 
 		if constexpr (!std::is_arithmetic<T>::value)
