@@ -22,10 +22,10 @@ SOCKET g_listenSocket;
 HANDLE g_hIOCP; 
 UINT32 g_id = 0;
 
-// key·Î id¸¦ ¹Þ¾Æ °ü¸®µÇ´Â ¼¼¼Ç ¸Ê
+// keyï¿½ï¿½ idï¿½ï¿½ ï¿½Þ¾ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½
 std::unordered_map<UINT32, CSession*> g_clients;
 
-// ÀÛ¾÷ÀÚ ½º·¹µå ÇÔ¼ö
+// ï¿½Û¾ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ô¼ï¿½
 unsigned int WINAPI WorkerThread(void* pArg);
 unsigned int WINAPI AcceptThread(void* pArg);
 
@@ -41,17 +41,17 @@ int main(void)
 {
     int retval;
 
-    // À©¼Ó ÃÊ±âÈ­
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±ï¿½È­
     WSADATA wsa;
     if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return 1;
 
-    // CPU °³¼ö È®ÀÎ
+    // CPU ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½
     SYSTEM_INFO si;
     GetSystemInfo(&si);
     // int ProcessorNum = si.dwNumberOfProcessors;
-    // ÇÁ·Î¼¼¼­ °¹¼ö ¹Ì¸¸À¸·Î IOCP Running ½º·¹µåÀÇ °¹¼ö¸¦ Á¦ÇÑÇÏ¸é¼­ Å×½ºÆ® ÇØº¼ °Í.
+    // ï¿½ï¿½ï¿½Î¼ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ì¸ï¿½ï¿½ï¿½ï¿½ï¿½ IOCP Running ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸é¼­ ï¿½×½ï¿½Æ® ï¿½Øºï¿½ ï¿½ï¿½.
     
-    // ÀÔÃâ·Â ¿Ï·á Æ÷Æ® »ý¼º
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½ ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½
     g_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 2);
     if (g_hIOCP == NULL)
     {
@@ -68,7 +68,7 @@ int main(void)
     }
 
 
-    // sendbuf Å©±â ¼³Á¤ (¼Û½Å ¹öÆÛÀÇ Å©±â¸¦ 0À¸·Î ¼³Á¤ÇØ Áß°£ ´Ü°è ¹öÆÛ¸µ ¾øÀÌ ¸Þ¸ð¸®¿¡ Á÷Á¢ direct I/O¸¦ À¯µµ)
+    // sendbuf Å©ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ (ï¿½Û½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Å©ï¿½â¸¦ 0ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ß°ï¿½ ï¿½Ü°ï¿½ ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Þ¸ð¸®¿ï¿½ ï¿½ï¿½ï¿½ï¿½ direct I/Oï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½)
     int recvBufSize = 0;
     if (setsockopt(g_listenSocket, SOL_SOCKET, SO_SNDBUF, (const char*)&recvBufSize, sizeof(recvBufSize)) == SOCKET_ERROR) {
         std::cerr << "setsockopt failed with error: " << WSAGetLastError() << std::endl;
@@ -96,13 +96,13 @@ int main(void)
 
 
     
-    ServerLib serverLib;        // IOCP ¼­¹ö ¶óÀÌºê·¯¸® ÀÎ½ºÅÏ½º
-    ServerContent serverContent; // ¼­¹ö ÄÜÅÙÃ÷ ÀÎ½ºÅÏ½º
+    ServerLib serverLib;        // IOCP ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ìºê·¯ï¿½ï¿½ ï¿½Î½ï¿½ï¿½Ï½ï¿½
+    ServerContent serverContent; // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Î½ï¿½ï¿½Ï½ï¿½
 
 
 
-    HANDLE hAcceptThread;		// Á¢¼Ó¿äÃ», ²÷±â¿¡ ´ëÇÑ Ã³¸®	
-    HANDLE hWorkerThread;		// ¿öÄ¿ ½º·¹µå
+    HANDLE hAcceptThread;		// ï¿½ï¿½ï¿½Ó¿ï¿½Ã», ï¿½ï¿½ï¿½â¿¡ ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½	
+    HANDLE hWorkerThread;		// ï¿½ï¿½Ä¿ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
     DWORD dwThreadID;
 
@@ -123,7 +123,7 @@ int main(void)
     WCHAR ControlKey;
 
     //------------------------------------------------
-    // Á¾·á ÄÁÆ®·Ñ...
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Æ®ï¿½ï¿½...
     //------------------------------------------------
     while (1)
     {
@@ -131,7 +131,7 @@ int main(void)
         if (ControlKey == L'q' || ControlKey == L'Q')
         {
             //------------------------------------------------
-            // Á¾·áÃ³¸®
+            // ï¿½ï¿½ï¿½ï¿½Ã³ï¿½ï¿½
             //------------------------------------------------
             PostQueuedCompletionStatus(g_hIOCP, 0, 0, NULL);
             break;
@@ -140,7 +140,7 @@ int main(void)
         if (ControlKey == L'w' || ControlKey == L'W')
         {
             //------------------------------------------------
-            // ¼¼¼ÇÇÏ³ª ¼±ÅÃÇØ¼­ WSASend·Î send 0À» ÇßÀ» ¶§ ¿Ï·áÅëÁö°¡ ¿À´ÂÁö È®ÀÎ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½Ï³ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¼ï¿½ WSASendï¿½ï¿½ send 0ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ È®ï¿½ï¿½
             //------------------------------------------------
             auto iter = g_clients.find(0);
             WSABUF wsaBuf;
@@ -158,7 +158,7 @@ int main(void)
 
 
 
-    // À©¼Ó Á¾·á
+    // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     WSACleanup();
     return 0;
 }
@@ -175,7 +175,7 @@ UINT32 ReleaseSession(CSession* pSession)
 }
 
 
-// ÀÛ¾÷ÀÚ ½º·¹µå ÇÔ¼ö
+// ï¿½Û¾ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ô¼ï¿½
 unsigned int WINAPI WorkerThread(void* pArg)
 {
     ServerContent* pContent = reinterpret_cast<ServerContent*>(pArg);
@@ -184,20 +184,20 @@ unsigned int WINAPI WorkerThread(void* pArg)
     int error;
     UINT32 IOCount;
 
-    // ºñµ¿±â ÀÔÃâ·Â ¿Ï·á ±â´Ù¸®±â
+    // ï¿½ñµ¿±ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½ ï¿½ï¿½Ù¸ï¿½ï¿½ï¿½
     DWORD transferredDataLen;
 
     CSession* pSession;
 
-    // GQCSÀÇ ¹ÝÈ¯°ªÀº ¼º°øÇÏ¸é TRUE, ¾Æ´Ï¸é FALSE.
+    // GQCSï¿½ï¿½ ï¿½ï¿½È¯ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ TRUE, ï¿½Æ´Ï¸ï¿½ FALSE.
     OVERLAPPED* pOverlapped;
 
     while (1) {
         transferredDataLen = 0;
         memset(&pOverlapped, 0, sizeof(pOverlapped));
 
-        // GQCS·Î IOCP ÇÚµé·Î ¿Â ¿Ï·áÅëÁö¸¦ °¡Á®¿È.
-        // ¹ÝÈ¯°ªÀ¸·Î ¸î ¹ÙÀÌÆ®¸¦ ¹Þ¾Ò´ÂÁö, ¾î¶² Å°ÀÎÁö, ¾î¶² ¿À¹ö·¦ ±¸Á¶Ã¼¸¦ »ç¿ëÇß´ÂÁö¸¦ ¾Ë·ÁÁØ´Ù.
+        // GQCSï¿½ï¿½ IOCP ï¿½Úµï¿½ï¿½ ï¿½ï¿½ ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.
+        // ï¿½ï¿½È¯ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ ï¿½Þ¾Ò´ï¿½ï¿½ï¿½, ï¿½î¶² Å°ï¿½ï¿½ï¿½ï¿½, ï¿½î¶² ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ß´ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ë·ï¿½ï¿½Ø´ï¿½.
         retval = GetQueuedCompletionStatus(g_hIOCP, &transferredDataLen, (PULONG_PTR)&pSession, &pOverlapped, INFINITE);
 
         error = WSAGetLastError();
@@ -205,34 +205,34 @@ unsigned int WINAPI WorkerThread(void* pArg)
         EnterCriticalSection(&pSession->cs);
 
 
-        // PQCS·Î ³ÖÀº ¿Ï·á ÅëÁö°ª(0, 0, NULL)ÀÌ ¿Â °æ¿ì. Áï, ³»(main ½º·¹µå)°¡ ¸ÕÀú ²÷Àº °æ¿ì
-        // ¿Ï·áÅëÁö°¡ ÀÖ´ø ¸»´ø ½º·¹µå¸¦ Á¾·á.
+        // PQCSï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½(0, 0, NULL)ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½. ï¿½ï¿½, ï¿½ï¿½(main ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½)ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
+        // ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½å¸¦ ï¿½ï¿½ï¿½ï¿½.
         if ((transferredDataLen == 0 && pSession == 0 && pOverlapped == nullptr))
             break;
 
-        // ¿¹¿Ü Ã³¸® - GQCS°¡ ½ÇÆÐÇÑ °æ¿ì, send,recv ÇÏ´øÁß ¹®Á¦°¡ »ý°Ü¼­ closesocketÀ» ÇØ¼­ ÇØ´ç ¼ÒÄÏÀ» »ç¿ëÇÏ´Â ¿Ï·áÅëÁö°¡ ¸ðµÎ ½ÇÆÐÇÑ °æ¿ìÀÌ´Ù.
-        // transferredDataLenÀÌ 0ÀÎ °æ¿ì(rst°¡ ¿Â °æ¿ì) <- ÀÌ°Ç send ÂÊ¿¡¼­ 0À» Á¤»óÀûÀ¸·Î º¸³¾ ¼ö ÀÖÀ¸´Ï send¿¡¼­ 0À» º¸³»´Â °æ¿ì´Â ¸·µµ·Ï Ã³¸®
+        // ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ - GQCSï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½, send,recv ï¿½Ï´ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ü¼ï¿½ closesocketï¿½ï¿½ ï¿½Ø¼ï¿½ ï¿½Ø´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ì´ï¿½.
+        // transferredDataLenï¿½ï¿½ 0ï¿½ï¿½ ï¿½ï¿½ï¿½(rstï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½) <- ï¿½Ì°ï¿½ send ï¿½Ê¿ï¿½ï¿½ï¿½ 0ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ sendï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½
         if (retval == FALSE || transferredDataLen == 0)
         {
-            // ¼ÒÄÏÀÌ À¯È¿ÇÏ´Ù¸é closesocket ÇÏ°í, ¼¼¼ÇÀÇ IO Count¸¦ 1 °¨¼ÒÇÑ´Ù. 
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½È¿ï¿½Ï´Ù¸ï¿½ closesocket ï¿½Ï°ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ IO Countï¿½ï¿½ 1 ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½. 
             IOCount = ReleaseSession(pSession);
 
-            // IO Count°¡ 0ÀÌ¶ó¸é ¼¼¼ÇÀ» Áö¿ò.
+            // IO Countï¿½ï¿½ 0ï¿½Ì¶ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
             if (IOCount == 0)
                 delete pSession;
 
-            // IO Count°¡ 0ÀÌ ¾Æ´Ï¶ó¸é ¿Ï·áÅëÁö°¡ ³²¾Æ ÀÖÀ¸´Ï GQCS¿¡¼­ ¿Ï·áÅëÁö¸¦ ´Ù½Ã °¡Á®¿Àµµ·Ï continueÇÑ´Ù.
+            // IO Countï¿½ï¿½ 0ï¿½ï¿½ ï¿½Æ´Ï¶ï¿½ï¿½ ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ GQCSï¿½ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ù½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ continueï¿½Ñ´ï¿½.
             LeaveCriticalSection(&pSession->cs);
             continue;
         }
 
-        // recv ¿Ï·á ÅëÁö°¡ ¿Â °æ¿ì
+        // recv ï¿½Ï·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½
         else if (pOverlapped == &pSession->overlappedRecv) {
 
-            // WSARecv´Â ¸µ¹öÆÛ¸¦ »ç¿ëÇÏ±â¿¡ ¹öÆÛ¿¡ µ¥ÀÌÅÍ¸¸ Á¸ÀçÇÏ°í, »çÀÌÁî´Â Áõ°¡ÇÏÁö ¾Ê¾Ò´Ù. °í·Î »çÀÌÁî¸¦ Áõ°¡½ÃÅ²´Ù.
+            // WSARecvï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Û¸ï¿½ ï¿½ï¿½ï¿½ï¿½Ï±â¿¡ ï¿½ï¿½ï¿½Û¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ê¾Ò´ï¿½. ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½î¸¦ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Å²ï¿½ï¿½.
             pSession->recvQ.MoveRear(transferredDataLen);
 
-            // ¿¡ÄÚÇü½ÄÀ¸·Î ¸¸µé °ÍÀÌ±â¿¡ ¹ÞÀº µ¥ÀÌÅÍ¸¦ »Ì¾Æ³»¾î sendQ¿¡ »ðÀÔ
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì±â¿¡ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½Ì¾Æ³ï¿½ï¿½ï¿½ sendQï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
             char temp[512];
             pSession->recvQ.Dequeue(temp, transferredDataLen);
 
@@ -251,7 +251,7 @@ unsigned int WINAPI WorkerThread(void* pArg)
                     DebugBreak();
                 }
 
-                // ÄÜÅÙÃ÷ ÄÚµå OnRecv¿¡ ¼¼¼ÇÀÇ id¿Í ÆÐÅ¶ Á¤º¸¸¦ ³Ñ°ÜÁÜ
+                // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Úµï¿½ OnRecvï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ idï¿½ï¿½ ï¿½ï¿½Å¶ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ñ°ï¿½ï¿½ï¿½
                 pContent->OnRecv(pSession->id, &Packet);
             }
             
@@ -259,56 +259,56 @@ unsigned int WINAPI WorkerThread(void* pArg)
 
 
 
-            // ¿©±â¼­ ÄÁÅÙÃ÷ Ã³¸®°¡ µé¾î°¨.
-            // ÄÁÅÙÃ÷ Ã³¸®¸¦ ÇÏ¸é¼­ sendQ¿¡ µ¥ÀÌÅÍ¸¦ »ðÀÔ. SendPost ÇÔ¼ö È£Ãâ½Ã sendQ¿¡ ³ÖÀº µ¥ÀÌÅÍ¸¦ º¸³¾ ¼ö ÀÖ´Ù¸é º¸³½´Ù.
+            // ï¿½ï¿½ï¿½â¼­ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½î°¨.
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ï¿½ï¿½ ï¿½Ï¸é¼­ sendQï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½ï¿½ï¿½ï¿½. SendPost ï¿½Ô¼ï¿½ È£ï¿½ï¿½ï¿½ sendQï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½.
             pSession->sendQ.Enqueue(temp, transferredDataLen);
                
-            // º¸³¾ °ÍÀÌ ÀÖÀ» ¶§ sendflag È®ÀÎÇÔ.
-            // sending ÇÏ´Â ÁßÀÌ ¾Æ´Ï¶ó¸é
+            // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ sendflag È®ï¿½ï¿½ï¿½ï¿½.
+            // sending ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Æ´Ï¶ï¿½ï¿½
             if (InterlockedExchange(&pSession->sendFlag, 1) == 0)
             {
-                // send Ã³¸®
+                // send Ã³ï¿½ï¿½
                 SendPost(pSession);
             }
 
-            // recv Ã³¸®
+            // recv Ã³ï¿½ï¿½
             RecvPost(pSession);
         }
 
-        // send ¿Ï·á ÅëÁö°¡ ¿Â °æ¿ì
+        // send ï¿½Ï·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½
         else if (pOverlapped == &pSession->overlappedSend) {
-            // sendFlag¸¦ ¸ÕÀú ³õ°í, sendQ¿¡ º¸³¾ µ¥ÀÌÅÍ°¡ ÀÖ´ÂÁö È®ÀÎÇÑ´Ù. 
-            // ´Ù¸¥ ½º·¹µå¿¡¼­ recv ¿Ï·áÅëÁö¸¦ Ã³¸®ÇÒ ¶§ sendQ¿¡ enq ÇÏ°í, sendFlag¸¦ °Ë»çÇÏ±â¿¡
-            // µÑ Áß ÇÏ³ª´Â ¹«Á¶°Ç sendFlag°¡ ¿Ã¹Ù¸£°Ô Àû¿ëµÈ´Ù.
+            // sendFlagï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½, sendQï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ ï¿½Ö´ï¿½ï¿½ï¿½ È®ï¿½ï¿½ï¿½Ñ´ï¿½. 
+            // ï¿½Ù¸ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½å¿¡ï¿½ï¿½ recv ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ sendQï¿½ï¿½ enq ï¿½Ï°ï¿½, sendFlagï¿½ï¿½ ï¿½Ë»ï¿½ï¿½Ï±â¿¡
+            // ï¿½ï¿½ ï¿½ï¿½ ï¿½Ï³ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ sendFlagï¿½ï¿½ ï¿½Ã¹Ù¸ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½È´ï¿½.
             InterlockedExchange(&pSession->sendFlag, 0);
 
-            // º¸³»´Â °ÍÀ» ¿Ï·á ÇßÀ¸¹Ç·Î sendQ¿¡ ÀÖ´Â µ¥ÀÌÅÍ¸¦ Á¦°Å
+            // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ sendQï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½ï¿½ï¿½ï¿½
             pSession->sendQ.MoveFront(transferredDataLen);
 
-            // ¸¸¾à sendQ¿¡ µ¥ÀÌÅÍ°¡ ÀÖ´Ù¸é
+            // ï¿½ï¿½ï¿½ï¿½ sendQï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ ï¿½Ö´Ù¸ï¿½
             if (pSession->sendQ.GetUseSize() != 0)
             {
                 if (InterlockedExchange(&pSession->sendFlag, 1) == 0)
                 {
-                    // send Ã³¸®
+                    // send Ã³ï¿½ï¿½
                     SendPost(pSession);
                 }
             }
 
-            // ¸¸¾à sendQ¿¡ µ¥ÀÌÅÍ°¡ ¾ø´Ù¸é
+            // ï¿½ï¿½ï¿½ï¿½ sendQï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ ï¿½ï¿½ï¿½Ù¸ï¿½
             else
-                ; // ÀÌ¹Ì sendFlag 0À¸·Î ¹Ù²åÀ¸´Ï ¾Æ¹«°Íµµ ÇÒ °ÍÀÌ ¾ø´Ù.
+                ; // ï¿½Ì¹ï¿½ sendFlag 0ï¿½ï¿½ï¿½ï¿½ ï¿½Ù²ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Æ¹ï¿½ï¿½Íµï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
         }
 
         LeaveCriticalSection(&pSession->cs);
 
-        // ¿Ï·áÅëÁö Ã³¸® ÀÌÈÄ IO Count 1 °¨¼Ò
+        // ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ IO Count 1 ï¿½ï¿½ï¿½ï¿½
         IOCount = InterlockedDecrement(&pSession->IOCount);
 
-        // IO Count°¡ 0ÀÎ °æ¿ì, ¸ðµç ¿Ï·áÅëÁö¸¦ Ã³¸®ÇßÀ¸¹Ç·Î ¼¼¼ÇÀ» »èÁ¦ÇØµµ ¹«¹æ.
+        // IO Countï¿½ï¿½ 0ï¿½ï¿½ ï¿½ï¿½ï¿½, ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Ã³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ç·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ ï¿½ï¿½ï¿½ï¿½.
         if (IOCount == 0)
         {
-            // ¼¼¼Ç »èÁ¦
+            // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
             delete pSession;
         }
     }
@@ -320,7 +320,7 @@ unsigned int WINAPI AcceptThread(void* pArg)
 {
     ServerLib* pServer = reinterpret_cast<ServerLib*>(pArg);
 
-    // µ¥ÀÌÅÍ Åë½Å¿¡ »ç¿ëÇÒ º¯¼ö
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Å¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
     SOCKET client_sock;
     SOCKADDR_IN clientaddr;
 
@@ -336,15 +336,15 @@ unsigned int WINAPI AcceptThread(void* pArg)
             break;
         }
 
-        // ¼¼¼Ç »ý¼º
+        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         
-        // ¼ÒÄÏ Á¤º¸ ±¸Á¶Ã¼ ÇÒ´ç
+        // ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ã¼ ï¿½Ò´ï¿½
         CSession* pSession = new CSession;
 
         if (pSession == NULL)
             break;
 
-        // IP, PORT °ª Ãß°¡
+        // IP, PORT ï¿½ï¿½ ï¿½ß°ï¿½
         char pAddrBuf[INET_ADDRSTRLEN];
         if (inet_ntop(AF_INET, &clientaddr, pAddrBuf, sizeof(pAddrBuf)) == NULL) {
             std::cout << "Error : inet_ntop()\n";
@@ -356,49 +356,49 @@ unsigned int WINAPI AcceptThread(void* pArg)
 
         pSession->port = ntohs(clientaddr.sin_port);
 
-        // send/recv¿ë ¿À¹ö·¦ ±¸Á¶Ã¼ ÃÊ±âÈ­
+        // send/recvï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ã¼ ï¿½Ê±ï¿½È­
         ZeroMemory(&pSession->overlappedRecv, sizeof(pSession->overlappedRecv));
         ZeroMemory(&pSession->overlappedSend, sizeof(pSession->overlappedSend));
 
-        // client ¼ÒÄÏ ¿¬°á
+        // client ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         pSession->sock = client_sock;
 
-        // client ID ºÎ¿©
+        // client ID ï¿½Î¿ï¿½
         pSession->id = g_id;
         g_id++;
 
-        // IO Count ºÎ¿©, ÃÊ±âÈ­ ÇÒ ½Ã±â·Î ¾ÆÁ÷ µî·Ïµµ ÀüÀÌ´Ï 0À¸·Î ¼³Á¤
+        // IO Count ï¿½Î¿ï¿½, ï¿½Ê±ï¿½È­ ï¿½ï¿½ ï¿½Ã±ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ïµï¿½ ï¿½ï¿½ï¿½Ì´ï¿½ 0ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
         pSession->IOCount = 0;
 
-        // send¸¦ 1È¸ Á¦ÇÑÇÏ±â À§ÇÑ flag º¯¼ö
+        // sendï¿½ï¿½ 1È¸ ï¿½ï¿½ï¿½ï¿½ï¿½Ï±ï¿½ ï¿½ï¿½ï¿½ï¿½ flag ï¿½ï¿½ï¿½ï¿½
         pSession->sendFlag = 0;
 
         pSession->SendingCount = 0;
 
 
-        // ¼ÒÄÏ°ú ÀÔÃâ·Â ¿Ï·á Æ÷Æ® ¿¬°á - »õ·Î ¿¬°ßµÉ ¼ÒÄÏÀ» key¸¦ ÇØ´ç ¼ÒÄÏ°ú ¿¬°áµÈ ¼¼¼Ç ±¸Á¶Ã¼ÀÇ Æ÷ÀÎÅÍ·Î ÇÏ¿© IOCP¿Í ¿¬°áÇÑ´Ù.
+        // ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ï·ï¿½ ï¿½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ßµï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ keyï¿½ï¿½ ï¿½Ø´ï¿½ ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ã¼ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í·ï¿½ ï¿½Ï¿ï¿½ IOCPï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
         CreateIoCompletionPort((HANDLE)client_sock, g_hIOCP, (ULONG_PTR)pSession, 0);
 
 
-        // recv Ã³¸®
+        // recv Ã³ï¿½ï¿½
         RecvPost(pSession);
 
-        // ÀÌ ½ÃÁ¡¿¡¼± IO Count°¡ ½Ì±Û ½º·¹µå³ª ´Ù¸§ ¾ø±â¿¡ interlock¾øÀÌ »ýÀ¸·Î °Ë»ç °¡´É.
+        // ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ IO Countï¿½ï¿½ ï¿½Ì±ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½å³ª ï¿½Ù¸ï¿½ ï¿½ï¿½ï¿½â¿¡ interlockï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ë»ï¿½ ï¿½ï¿½ï¿½ï¿½.
         if (pSession->IOCount == 0)
         {
-            // ¸¸¾à WSARecv°¡ ½ÇÆÐÇß´Ù¸é ¿Ï·áÅëÁöµµ ¿ÀÁö ¾Ê±â¿¡ ¿©±â¼­ ¹Ù·Î ¼¼¼ÇÀ» »èÁ¦ÇØÁà¾ßÇÑ´Ù.
+            // ï¿½ï¿½ï¿½ï¿½ WSARecvï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ß´Ù¸ï¿½ ï¿½Ï·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê±â¿¡ ï¿½ï¿½ï¿½â¼­ ï¿½Ù·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
             delete pSession;
             continue;
         }
 
-        // ¿©±â¼­ Àü¿ªÀûÀÎ ¼¼¼Ç ¸ÊÀÌ³ª ¹è¿­¿¡ ¼¼¼ÇÀ» µî·Ï
+        // ï¿½ï¿½ï¿½â¼­ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì³ï¿½ ï¿½è¿­ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½
         pServer->RegisterSession(pSession);
     }
 
     return 0;
 }
 
-// sendQ¿¡ µ¥ÀÌÅÍ¸¦ ³Ö°í, WSASend¸¦ È£Ãâ
+// sendQï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½Ö°ï¿½, WSASendï¿½ï¿½ È£ï¿½ï¿½
 void SendPost(CSession* pSession)
 {
     UINT32 a = InterlockedIncrement(&pSession->SendingCount);
@@ -417,20 +417,20 @@ void SendPost(CSession* pSession)
 
     int transferredDataLen = pSession->sendQ.GetUseSize();
 
-    // º¸³»·Á´Â µ¥ÀÌÅÍÀÇ ±æÀÌ°¡ sendQ¿¡¼­ »¬ ¼ö ÀÖ´Â µ¥ÀÌÅÍÀÇ ±æÀÌº¸´Ù Å©´Ù¸é
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì°ï¿½ sendQï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ìºï¿½ï¿½ï¿½ Å©ï¿½Ù¸ï¿½
     if (transferredDataLen > pSession->sendQ.DirectDequeueSize())
     {
         wsaBuf[1].len = transferredDataLen - wsaBuf[0].len;
     }
-    // º¸³»·Á´Â µ¥ÀÌÅÍÀÇ ±æÀÌ°¡ sendQ¿¡¼­ »¬ ¼ö ÀÖ´Â µ¥ÀÌÅÍÀÇ ±æÀÌ¿Í ºñ±³ÇßÀ» ¶§ ÀÛ°Å³ª °°´Ù¸é
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì°ï¿½ sendQï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½Ì¿ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Û°Å³ï¿½ ï¿½ï¿½ï¿½Ù¸ï¿½
     else
     {
         wsaBuf[1].len = 0;
     }
 
-    // sendÇÏ´Â µ¥ÀÌÅÍ°¡ 0ÀÌ¶ó¸é
+    // sendï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í°ï¿½ 0ï¿½Ì¶ï¿½ï¿½
     if ((wsaBuf[0].len + wsaBuf[1].len) == 0)
-        // return ÇÒ °Í.
+        // return ï¿½ï¿½ ï¿½ï¿½.
         return;
 
     DWORD flags{};
@@ -466,7 +466,7 @@ void RecvPost(CSession* pSession)
    
     InterlockedIncrement(&pSession->IOCount);
 
-    // ºñµ¿±â recv Ã³¸®¸¦ À§ÇØ ¸ÕÀú recv¸¦ °É¾îµÒ. ¹ÞÀº µ¥ÀÌÅÍ´Â wsaBuf¿¡ µî·ÏÇÑ ¸Þ¸ð¸®¿¡ Ã¤¿öÁú ¿¹Á¤.
+    // ï¿½ñµ¿±ï¿½ recv Ã³ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ recvï¿½ï¿½ ï¿½É¾ï¿½ï¿½. ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Í´ï¿½ wsaBufï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Þ¸ð¸®¿ï¿½ Ã¤ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½.
     retVal = WSARecv(pSession->sock, recvBuf, 2, NULL, &flags, &pSession->overlappedRecv, NULL);
 
     error = WSAGetLastError();
@@ -477,7 +477,7 @@ void RecvPost(CSession* pSession)
             return;
 
         InterlockedDecrement(&pSession->IOCount);
-        std::cerr << "RecvPost : WSARecv - " << error << "\n"; // ÀÌ ºÎºÐÀº ¾ø¾î¾ßÇÏ´Âµ¥ ¾î¶² ¿À·ù°¡ »ý±æÁö ¸ð¸£´Ï±ñ È®ÀÎ Â÷¿ø¿¡¼­ ³Ö¾îº½.
-                                                                // ³ªÁß¿£ ¸ÖÆ¼½º·¹µå ·ÎÁ÷¿¡ ¿µÇâÀ» ¹ÌÄ¡Áö ¾Ê´Â OnError µîÀ¸·Î ºñµ¿±â Ãâ·Â¹®À¸·Î ±³Ã¼ ¿¹Á¤.
+        std::cerr << "RecvPost : WSARecv - " << error << "\n"; // ï¿½ï¿½ ï¿½Îºï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï´Âµï¿½ ï¿½î¶² ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ð¸£´Ï±ï¿½ È®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ö¾îº½.
+                                                                // ï¿½ï¿½ï¿½ß¿ï¿½ ï¿½ï¿½Æ¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ä¡ï¿½ï¿½ ï¿½Ê´ï¿½ OnError ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ñµ¿±ï¿½ ï¿½ï¿½Â¹ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½Ã¼ ï¿½ï¿½ï¿½ï¿½.
     }
 }
