@@ -2,6 +2,10 @@
 
 #include "RingBuffer.h"
 
+//#define NOMINMAX
+//#include <WinSock2.h>
+//#include <WS2tcpip.h>
+
 // 소켓 정보 저장을 위한 구조체
 class CSession
 {

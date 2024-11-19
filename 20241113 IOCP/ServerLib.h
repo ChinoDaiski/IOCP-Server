@@ -19,9 +19,13 @@ public:
 
 public:
     // 콘텐츠에서 보낼 것이 생겼을 때 호출되는 함수
-    virtual void SendPacket(int sessionID, CPacket* pPacket);
+    virtual void SendPacket(int sessionID, CPacket* pPacket) override;
 
+public:
     void RegisterSession(CSession* _pSession);
+    void DeleteSession(CSession* _pSession);
+    void SendPost(CSession* pSession);
+    void RecvPost(CSession* pSession);
 
 private:
     std::unordered_map<UINT32, CSession*> sessionMap;
