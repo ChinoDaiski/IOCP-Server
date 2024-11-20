@@ -36,6 +36,12 @@
     <Filter Include="소스 파일\99. pch">
       <UniqueIdentifier>{5b84845f-d174-49c1-b9b5-721e9e052426}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\98. Protocol">
+      <UniqueIdentifier>{09f137ae-7bb6-42ce-9aaf-f3ec7f1248b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\97. CircularQueue">
+      <UniqueIdentifier>{14b00c09-2a12-4085-aefd-5e368435f655}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Content.cpp">
@@ -55,6 +61,9 @@
     </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>소스 파일\99. pch</Filter>
+    </ClCompile>
+    <ClCompile Include="CircularQueue.cpp">
+      <Filter>소스 파일\97. CircularQueue</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -81,6 +90,12 @@
     </ClInclude>
     <ClInclude Include="pch.h">
       <Filter>소스 파일\99. pch</Filter>
+    </ClInclude>
+    <ClInclude Include="Protocol.h">
+      <Filter>소스 파일\98. Protocol</Filter>
+    </ClInclude>
+    <ClInclude Include="CircularQueue.h">
+      <Filter>소스 파일\97. CircularQueue</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

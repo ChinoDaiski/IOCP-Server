@@ -9,33 +9,53 @@
 #pragma comment(lib, "ws2_32")
 
 ServerLib::ServerLib(void)
-	: g_ID{ 0 }
+    : g_ID{ 0 }, pIContent{ NULL }
 {
+    InitializeCriticalSection(&cs_sessionMap);
+}
+
+ServerLib::~ServerLib(void)
+{
+    DeleteCriticalSection(&cs_sessionMap);
 }
 
 void ServerLib::SendPacket(int sessionID, CPacket* pPacket)
 {
+    DWORD curThreadID = GetCurrentThreadId();
+
 	// 세션 검색
+    EnterCriticalSection(&cs_sessionMap);
 	auto iter = sessionMap.find(sessionID);
+    LeaveCriticalSection(&cs_sessionMap);
 
 	// 세션을 찾았다면
 	if (iter != sessionMap.end())
 	{
+        iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_FIND));
+
 		iter->second->sendQ.Enqueue(pPacket->GetBufferPtr(), pPacket->GetDataSize());
 		pPacket->Clear();
+
+        iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_ENQ));
 	}
 	else
 	{
 		DebugBreak();
 	}
 
+    iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_START_SENDPOST));
+
     // 컨텐츠이지만 SendPost를 
     SendPost(iter->second);
+
+    iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_SENDPOST));
 }
 
 void ServerLib::RegisterSession(CSession* _pSession)
 {
+    EnterCriticalSection(&cs_sessionMap);
 	sessionMap.emplace(g_ID, _pSession);
+    LeaveCriticalSection(&cs_sessionMap);
 	++g_ID;
 
 	// 콘텐츠 accept 함수 생성 -> 에코가 아닌 진짜로 콘텐츠에서 뭔가 만들 때 등록 요망.
@@ -44,11 +64,15 @@ void ServerLib::RegisterSession(CSession* _pSession)
 
 void ServerLib::DeleteSession(CSession* _pSession)
 {
+    EnterCriticalSection(&cs_sessionMap);
 	auto iter = sessionMap.find(_pSession->id);
+    LeaveCriticalSection(&cs_sessionMap);
 
 	if (iter != sessionMap.end())
 	{
+        EnterCriticalSection(&cs_sessionMap);
 		sessionMap.erase(iter);
+        LeaveCriticalSection(&cs_sessionMap);
 		delete _pSession;
 	}
 
@@ -58,11 +82,18 @@ void ServerLib::DeleteSession(CSession* _pSession)
 // sendQ에 데이터를 넣고, WSASend를 호출
 void ServerLib::SendPost(CSession* pSession)
 {
+    DWORD curThreadID = GetCurrentThreadId();
+
     // 보낼 것이 있을 때 sendflag 확인함.
     // sending 하는 중이라면
     if (InterlockedExchange(&pSession->sendFlag, 1) == 1)
+    {
+        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SERVERLIB_SENDPOST_SENDING));
         // 넘어감
         return;
+    }
+
+    pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SERVERLIB_SENDPOST_TRY_SEND));
 
     UINT32 a = InterlockedIncrement(&pSession->SendingCount);
 
@@ -108,7 +139,15 @@ void ServerLib::SendPost(CSession* pSession)
         if (error == ERROR_IO_PENDING)
             ;
         else
-            DebugBreak();
+        {
+            // 상대방쪽에서 먼저 끊음.
+            if (error == WSAECONNRESET)
+            {
+                InterlockedDecrement(&pSession->IOCount);
+            }
+            else
+                DebugBreak();
+        }
     }
 
     InterlockedDecrement(&pSession->SendingCount);

@@ -12,7 +12,7 @@ class ServerLib : public IServer
 {
 public:
     ServerLib(void);
-    ~ServerLib(void) = default;
+    ~ServerLib(void);
 
 public:
     void RegisterIContent(IContent* _pIContent) { pIContent = _pIContent; }
@@ -30,6 +30,7 @@ public:
 private:
     std::unordered_map<UINT32, CSession*> sessionMap;
     UINT32 g_ID;
+    CRITICAL_SECTION cs_sessionMap;
 
 private:
     IContent* pIContent;

@@ -7,11 +7,16 @@ CPacket::CPacket(int iBufferSize)
 {
 	m_iBufferSize = iBufferSize;
 	m_iFront = m_iRear = 0;
+
+	m_chpBuffer = new char[m_iBufferSize];
+	ZeroMemory(m_chpBuffer, m_iBufferSize);
 }
 
 CPacket::~CPacket()
 {
 	Clear();
+
+	delete m_chpBuffer;
 }
 
 void CPacket::Clear(void)
