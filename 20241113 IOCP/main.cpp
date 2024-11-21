@@ -44,7 +44,7 @@ int main(void)
     // 프로세서 갯수 미만으로 IOCP Running 스레드의 갯수를 제한하면서 테스트 해볼 것.
     
     // 입출력 완료 포트 생성
-    g_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 2);
+    g_hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 4);
     if (g_hIOCP == NULL)
     {
         std::cerr << "INVALID_HANDLE : g_hIOCP\n";
@@ -105,8 +105,8 @@ int main(void)
     hAcceptThread = (HANDLE)_beginthreadex(NULL, 0, AcceptThread, &serverLib, 0, (unsigned int*)&dwThreadID);
     hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
     hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
-    //hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, NULL, 0, (unsigned int*)&dwThreadID);
-    //hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, NULL, 0, (unsigned int*)&dwThreadID);
+    hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
+    hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
     //hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, (LPVOID)0, 0, (unsigned int*)&dwThreadID);
 
 
@@ -280,8 +280,11 @@ unsigned int WINAPI WorkerThread(void* pArg)
                 }
 
                 // 콘텐츠 코드 OnRecv에 세션의 id와 패킷 정보를 넘겨줌
-                pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_ONRECV_START));
-                g_pContent->OnRecv(pSession->id, &Packet);
+                pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_ONRECV_START)); 
+
+                Packet.MoveReadPos(sizeof(PACKET_HEADER));  // len 길이에 대한 정보를 지움, netlib에서 사용하는 패킷의 길이에 대한 정보를 날림.
+                g_pContent->OnRecv(pSession->id, &Packet);  // 페이로드만 남은 패킷 정보를 컨텐츠에 넘김
+
                 pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_ONRECV_AFTER));
             }
 
@@ -307,7 +310,7 @@ unsigned int WINAPI WorkerThread(void* pArg)
             // 만약 sendQ에 데이터가 있다면
             if (pSession->sendQ.GetUseSize() != 0)
             {
-                pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_HASDATA));
+                pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_HAS_DATA));
 
                 // send 처리
                 pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_SENDPOST_START));
@@ -317,15 +320,18 @@ unsigned int WINAPI WorkerThread(void* pArg)
 
             // 만약 sendQ에 데이터가 없다면
             else
-                ; // 이미 sendFlag 0으로 바꿨으니 아무것도 할 것이 없다.
+            {
+                // 이미 sendFlag 0으로 바꿨으니 아무것도 할 것이 없다.
+                pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_HAS_NODATA)); 
+            }
         }
-
-        LeaveCriticalSection(&pSession->cs_session);
-        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_LEAVE_CS3));
 
         // 완료통지 처리 이후 IO Count 1 감소
         IOCount = InterlockedDecrement(&pSession->IOCount);
         pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION((UINT32)ACTION::IOCOUNT_0 + IOCount)));
+
+        LeaveCriticalSection(&pSession->cs_session);
+        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_LEAVE_CS3));
 
         // IO Count가 0인 경우, 모든 완료통지를 처리했으므로 세션을 삭제해도 무방.
         if (IOCount == 0)

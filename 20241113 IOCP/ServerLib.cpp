@@ -33,8 +33,12 @@ void ServerLib::SendPacket(int sessionID, CPacket* pPacket)
 	{
         iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_FIND));
 
-		iter->second->sendQ.Enqueue(pPacket->GetBufferPtr(), pPacket->GetDataSize());
-		pPacket->Clear();
+        CPacket packet;
+        PACKET_HEADER header;
+        header.bySize = pPacket->GetDataSize();
+        packet.PutData((char*)&header, sizeof(PACKET_HEADER));
+        packet.PutData(pPacket->GetBufferPtr(), pPacket->GetDataSize());
+        iter->second->sendQ.Enqueue(packet.GetBufferPtr(), packet.GetDataSize());
 
         iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_ENQ));
 	}
