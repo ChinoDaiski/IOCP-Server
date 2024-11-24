@@ -33,6 +33,11 @@ int CRingBuffer::Enqueue(const char* chpData, UINT32 iSize)
     UINT32 w = writePos;
     UINT32 useSize = (w >= r) ? (w - r) : (capacity - r + w);
 
+    if (w == 0)
+    {
+        useSize -= 1;
+    }
+
     UINT32 freeSize = capacity - useSize - 1;
 
     if (iSize > freeSize)
@@ -90,7 +95,7 @@ int CRingBuffer::Peek(char* chpDest, UINT32 iSize) const
     UINT32 firstReadSize = std::min(toRead, capacity - r);
     UINT32 secondReadSize = toRead - firstReadSize;
 
-    ZeroMemory(chpDest, 60);
+    ZeroMemory(chpDest, firstReadSize + secondReadSize);
 
     std::memcpy(chpDest, &buffer[r], firstReadSize);
 
@@ -166,7 +171,7 @@ int CRingBuffer::makeWSASendBuf(LPWSABUF wsaBuf)
             return 1;
 
         wsaBuf[1].buf = buffer;
-        wsaBuf[1].len = w - 1;
+        wsaBuf[1].len = w;
 
         return 2;
     }

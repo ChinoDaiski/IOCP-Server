@@ -241,30 +241,33 @@ unsigned int WINAPI WorkerThread(void* pArg)
             pSession->recvQ.MoveRear(transferredDataLen);
 
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_START_WHILE));
+            int useSize = pSession->recvQ.GetUseSize();
+            pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION((UINT32)ACTION::RECV_QUEUE_USESIZE + useSize)));
+
             while (true)
             {
                 // 1. RecvQ에 최소한의 사이즈가 있는지 확인. 조건은 [ 헤더 사이즈 이상의 데이터가 있는지 확인 ]하는 것.
-                if (pSession->recvQ.GetUseSize() < sizeof(PACKET_HEADER))
+                int useSize = pSession->recvQ.GetUseSize();
+                if (useSize < sizeof(PACKET_HEADER))
                 {
                     pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_EXIT_WHILE1));
+                    pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION((UINT32)ACTION::RECV_QUEUE_USESIZE + useSize)));
                     break;
                 }
+                
 
                 // 2. RecvQ에서 PACKET_HEADER 정보 Peek
                 PACKET_HEADER header;
                 int headerSize = sizeof(header);
 
-                if (pSession->recvQ.GetReadPos() >= 1991)
-                {
-                    int a = 10;
-                }
-
                 int retVal = pSession->recvQ.Peek(reinterpret_cast<char*>(&header), headerSize);
 
                 // 3. 헤더의 len값과 RecvQ의 데이터 사이즈 비교
-                if ((header.bySize + sizeof(PACKET_HEADER)) > pSession->recvQ.GetUseSize())
+                useSize = pSession->recvQ.GetUseSize();
+                if ((header.bySize + sizeof(PACKET_HEADER)) > useSize)
                 {
                     pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_EXIT_WHILE2));
+                    pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION((UINT32)ACTION::RECV_QUEUE_USESIZE + useSize)));
                     break;
                 }
 
@@ -304,11 +307,12 @@ unsigned int WINAPI WorkerThread(void* pArg)
             // sendFlag를 먼저 놓고, sendQ에 보낼 데이터가 있는지 확인한다. 
             // 다른 스레드에서 recv 완료통지를 처리할 때 sendQ에 enq 하고, sendFlag를 검사하기에
             // 둘 중 하나는 무조건 sendFlag가 올바르게 적용된다.
+            
+            // 보내는 것을 완료 했으므로 sendQ에 있는 데이터를 제거
+            pSession->sendQ.MoveFront(transferredDataLen);
             InterlockedExchange(&pSession->sendFlag, 0);
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_FLAG0));
 
-            // 보내는 것을 완료 했으므로 sendQ에 있는 데이터를 제거
-            pSession->sendQ.MoveFront(transferredDataLen);
 
             // 만약 sendQ에 데이터가 있다면
             if (pSession->sendQ.GetUseSize() != 0)

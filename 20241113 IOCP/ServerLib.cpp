@@ -89,17 +89,10 @@ void ServerLib::SendPost(CSession* pSession)
     // sending 하는 중이라면
     if (InterlockedExchange(&pSession->sendFlag, 1) == 1)
     {
-        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SERVERLIB_SENDPOST_SENDING));
+        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SERVERLIB_SENDPOST_SOMEONE_SENDING));
         // 넘어감
         return;
     }
-
-    pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SERVERLIB_SENDPOST_TRY_SEND));
-
-    UINT32 a = InterlockedIncrement(&pSession->SendingCount);
-
-    if (a == 2)
-        DebugBreak();
 
     int retval;
     int error;
@@ -150,6 +143,30 @@ void ServerLib::SendPost(CSession* pSession)
     WSABUF sendBuf[2];
     int bufCnt = pSession->sendQ.makeWSASendBuf(sendBuf);
 
+    // A 스레드가 사이즈를 확인하고 아직 interlock을 호출하지 않은 상황에서, 컨텍스트 스위칭. 
+    // B 스레드가 recvPost 진행하면서 sendflag를 1로 바꾸고 진행
+    // C 스레드가 send 완료통지를 받아 sendflag를 0으로 바꿈
+    // A 스레드가 일어나서 interlock으로 0 에서 1로 바꾸고 send 진행. 근데 이미 send 되어버린 상황에서 send 0이 나올 수 있음.
+    // 이러면 우리 구조에서 recv 0일때 소켓을 제거하기에 이를 해결하기 위해서 send시 0인 상황을 확인해서 진행을 도중에 멈춤.
+    int sendLen = 0;
+    for (int i = 0; i < bufCnt; ++i)
+    {
+        sendLen += sendBuf[i].len;
+    }
+
+    if (sendLen == 0)
+    {
+        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SERVERLIB_SENDPOST_SEND0));
+
+        // 실제 WSASend를 안하니깐 sendflag를 풀어줘야한다.
+        InterlockedExchange(&pSession->sendFlag, 0);
+        return;
+    }
+
+
+    pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SERVERLIB_SENDPOST_REAL_SEND));
+
+
     DWORD flags{};
 
     InterlockedIncrement(&pSession->IOCount);
@@ -175,8 +192,6 @@ void ServerLib::SendPost(CSession* pSession)
                 DebugBreak();
         }
     }
-
-    InterlockedDecrement(&pSession->SendingCount);
 }
 
 void ServerLib::RecvPost(CSession* pSession)
