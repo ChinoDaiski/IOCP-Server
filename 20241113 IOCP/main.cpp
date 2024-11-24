@@ -1,16 +1,16 @@
 
 #include "pch.h"
+#include "Session.h"
 
 #include <process.h>
 #include <unordered_map>
 
-#include "RingBuffer.h"
-
 #include "ServerLib.h"
 #include "Content.h"
 
-#define SERVERPORT 6000
+#include "Protocol.h"
 
+#define SERVERPORT 6000
 
 SOCKET g_listenSocket; 
 HANDLE g_hIOCP; 
@@ -25,9 +25,6 @@ unsigned int WINAPI AcceptThread(void* pArg);
 
 ServerContent* g_pContent = nullptr;
 ServerLib* g_pServer = nullptr;
-
-
-
 
 int main(void)
 {
@@ -105,8 +102,8 @@ int main(void)
     hAcceptThread = (HANDLE)_beginthreadex(NULL, 0, AcceptThread, &serverLib, 0, (unsigned int*)&dwThreadID);
     hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
     hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
-    hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
-    hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
+    //hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
+    //hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
     //hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, (LPVOID)0, 0, (unsigned int*)&dwThreadID);
 
 
@@ -202,7 +199,6 @@ unsigned int WINAPI WorkerThread(void* pArg)
 
         error = WSAGetLastError();
 
-        EnterCriticalSection(&pSession->cs_session);
         pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_ENTER_CS));
 
 
@@ -210,7 +206,6 @@ unsigned int WINAPI WorkerThread(void* pArg)
         // 완료통지가 있던 말던 스레드를 종료.
         if ((transferredDataLen == 0 && pSession == 0 && pOverlapped == nullptr))
         {
-            LeaveCriticalSection(&pSession->cs_session);
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_LEAVE_CS1));
             break;
         }
@@ -227,15 +222,12 @@ unsigned int WINAPI WorkerThread(void* pArg)
             // IO Count가 0이라면 세션을 지움.
             if (IOCount == 0)
             {
-                LeaveCriticalSection(&pSession->cs_session);
-
                 // 세션 삭제
                 g_pServer->DeleteSession(pSession);
                 continue;
             }
 
             // IO Count가 0이 아니라면 완료통지가 남아 있으니 GQCS에서 완료통지를 다시 가져오도록 continue한다.
-            LeaveCriticalSection(&pSession->cs_session);
             continue;
         }
 
@@ -245,6 +237,8 @@ unsigned int WINAPI WorkerThread(void* pArg)
             
             // WSARecv는 링버퍼를 사용하기에 버퍼에 데이터만 존재하고, 사이즈는 증가하지 않았다. 고로 사이즈를 증가시킨다.
             pSession->recvQ.MoveRear(transferredDataLen);
+
+            pSession->testQ.Enqueue(pSession->recvQ.GetFrontBufferPtr(), transferredDataLen);
 
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_START_WHILE));
             while (true)
@@ -271,13 +265,14 @@ unsigned int WINAPI WorkerThread(void* pArg)
                 // 4. RecvQ에서 header의 len 크기만큼 임시 패킷 버퍼를 뽑는다.
                 CPacket Packet; // 힙 매니저가 같은 공간을 계속 사용. 디버깅 해보니 지역변수지만 같은 영역을 계속 사용하고 있음.
                 int echoSendSize = header.bySize + sizeof(PACKET_HEADER);
-                int recvQDeqRetVal = pSession->recvQ.Dequeue(Packet.GetBufferPtr(), echoSendSize);
+                int recvQDeqRetVal = pSession->recvQ.Dequeue(Packet.GetFrontBufferPtr(), echoSendSize);
                 Packet.MoveWritePos(echoSendSize);
 
                 if (recvQDeqRetVal != echoSendSize)
                 {
                     DebugBreak();
                 }
+
 
                 // 콘텐츠 코드 OnRecv에 세션의 id와 패킷 정보를 넘겨줌
                 pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_ONRECV_START)); 
@@ -330,7 +325,6 @@ unsigned int WINAPI WorkerThread(void* pArg)
         IOCount = InterlockedDecrement(&pSession->IOCount);
         pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION((UINT32)ACTION::IOCOUNT_0 + IOCount)));
 
-        LeaveCriticalSection(&pSession->cs_session);
         pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_LEAVE_CS3));
 
         // IO Count가 0인 경우, 모든 완료통지를 처리했으므로 세션을 삭제해도 무방.
@@ -405,6 +399,9 @@ unsigned int WINAPI AcceptThread(void* pArg)
 
         pSession->SendingCount = 0;
 
+        pSession->doRecv = false;
+        pSession->doSend = false;
+
 
         // 소켓과 입출력 완료 포트 연결 - 새로 연견될 소켓을 key를 해당 소켓과 연결된 세션 구조체의 포인터로 하여 IOCP와 연결한다.
         CreateIoCompletionPort((HANDLE)client_sock, g_hIOCP, (ULONG_PTR)pSession, 0);
@@ -417,6 +414,10 @@ unsigned int WINAPI AcceptThread(void* pArg)
         // recv 처리, 왜 등록을 먼저하고, 이후에 WSARecv를 하냐면, 등록 전에 Recv 완료통지가 올 수 있음. 그래서 등록을 먼저함
         g_pServer->RecvPost(pSession);
         pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_RECVPOST));
+
+
+
+
 
         // 이 시점에선 IO Count가 싱글 스레드나 다름 없기에 interlock없이 생으로 검사 가능.
         if (pSession->IOCount == 0)

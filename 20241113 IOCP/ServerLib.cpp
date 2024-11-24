@@ -3,10 +3,7 @@
 #include "ServerLib.h"
 #include "Session.h"
 
-#define NOMINMAX
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#pragma comment(lib, "ws2_32")
+#include "Protocol.h"
 
 ServerLib::ServerLib(void)
     : g_ID{ 0 }, pIContent{ NULL }
@@ -37,8 +34,8 @@ void ServerLib::SendPacket(int sessionID, CPacket* pPacket)
         PACKET_HEADER header;
         header.bySize = pPacket->GetDataSize();
         packet.PutData((char*)&header, sizeof(PACKET_HEADER));
-        packet.PutData(pPacket->GetBufferPtr(), pPacket->GetDataSize());
-        iter->second->sendQ.Enqueue(packet.GetBufferPtr(), packet.GetDataSize());
+        packet.PutData(pPacket->GetFrontBufferPtr(), pPacket->GetDataSize());
+        iter->second->sendQ.Enqueue(packet.GetFrontBufferPtr(), packet.GetDataSize());
 
         iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_ENQ));
 	}
@@ -131,11 +128,33 @@ void ServerLib::SendPost(CSession* pSession)
         // return 할 것.
         return;
 
+
+    if (memcmp(pSession->testQ.GetFrontBufferPtr(), wsaBuf[0].buf, wsaBuf[0].len) == 0)
+    {
+        pSession->testQ.MoveFront(wsaBuf[0].len);
+    }
+    else
+    {
+        DebugBreak();
+    }
+
+    if (memcmp(pSession->testQ.GetFrontBufferPtr(), wsaBuf[1].buf, wsaBuf[1].len) == 0)
+    {
+        pSession->testQ.MoveFront(wsaBuf[1].len);
+    }
+    else
+    {
+        DebugBreak();
+    }
+
+
+
     DWORD flags{};
 
     InterlockedIncrement(&pSession->IOCount);
 
     retval = WSASend(pSession->sock, wsaBuf, 2, NULL, flags, &pSession->overlappedSend, NULL);
+    pSession->doSend = true;
 
     error = WSAGetLastError();
     if (retval == SOCKET_ERROR)
@@ -144,6 +163,8 @@ void ServerLib::SendPost(CSession* pSession)
             ;
         else
         {
+            pSession->doSend = false;
+
             // 상대방쪽에서 먼저 끊음.
             if (error == WSAECONNRESET)
             {
@@ -164,6 +185,7 @@ void ServerLib::RecvPost(CSession* pSession)
 
     DWORD flags{};
 
+    // wsaBuf를 만드는 함수를 제작
     WSABUF recvBuf[2];
     recvBuf[0].buf = pSession->recvQ.GetFrontBufferPtr();
     recvBuf[0].len = pSession->recvQ.DirectEnqueueSize();
@@ -173,7 +195,8 @@ void ServerLib::RecvPost(CSession* pSession)
     InterlockedIncrement(&pSession->IOCount);
 
     // 비동기 recv 처리를 위해 먼저 recv를 걸어둠. 받은 데이터는 wsaBuf에 등록한 메모리에 채워질 예정.
-    retVal = WSARecv(pSession->sock, recvBuf, 2, NULL, &flags, &pSession->overlappedRecv, NULL);
+    retVal = WSARecv(pSession->sock, recvBuf, 2, NULL, &flags, &pSession->overlappedRecv, NULL); 
+    pSession->doRecv = true;
 
     error = WSAGetLastError();
 
@@ -182,6 +205,7 @@ void ServerLib::RecvPost(CSession* pSession)
         if (error == ERROR_IO_PENDING)
             return;
 
+        pSession->doRecv = false;
         InterlockedDecrement(&pSession->IOCount);
         std::cerr << "RecvPost : WSARecv - " << error << "\n"; // 이 부분은 없어야하는데 어떤 오류가 생길지 모르니깐 확인 차원에서 넣어봄.
         // 나중엔 멀티스레드 로직에 영향을 미치지 않는 OnError 등으로 비동기 출력문으로 교체 예정.

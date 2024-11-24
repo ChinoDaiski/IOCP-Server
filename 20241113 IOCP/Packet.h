@@ -1,7 +1,5 @@
 #pragma once
 
-#define NOMINMAX
-#include <Windows.h>
 #include <cstring>
 #include <type_traits>
 
@@ -51,7 +49,8 @@ public:
 	// Parameters: 없음.
 	// Return: (char *)버퍼 포인터.
 	//////////////////////////////////////////////////////////////////////////
-	char* GetBufferPtr(void) { return m_chpBuffer + m_iFront; }
+	char* GetFrontBufferPtr(void) { return m_chpBuffer + m_iFront; }
+	char* GetBufferPtr(void) { return m_chpBuffer; }
 
 	//////////////////////////////////////////////////////////////////////////
 	// 버퍼 Pos 이동. (음수이동은 안됨)

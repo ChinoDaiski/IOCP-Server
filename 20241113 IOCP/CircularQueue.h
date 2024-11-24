@@ -2,6 +2,7 @@
 
 #define CQSIZE 50
 
+#include <Windows.h>
 
 template <typename T>
 class CircularQueue {

@@ -2,10 +2,18 @@
 
 #include <iostream>
 
-#define NOMINMAX
+//#define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #pragma comment(lib, "ws2_32")
 
-#include "Session.h"
-#include "Protocol.h"
+#ifdef min
+#undef min
+#endif
+
+#ifdef max
+#undef max
+#endif
+
+#include <Windows.h>
+#include <algorithm>

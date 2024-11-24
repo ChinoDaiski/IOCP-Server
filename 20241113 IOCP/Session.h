@@ -1,7 +1,7 @@
 #pragma once
 
-#include "RingBuffer.h"
 #include "CircularQueue.h"
+#include "RingBuffer.h"
 
 enum class ACTION : UINT32
 {
@@ -50,17 +50,12 @@ enum class ACTION : UINT32
     IOCOUNT_0 = 100,
 };
 
-
 // 소켓 정보 저장을 위한 구조체
 class CSession
 {
 public:
-    CSession() {
-        InitializeCriticalSection(&cs_session);
-    }
-    ~CSession() {
-        DeleteCriticalSection(&cs_session);
-    }
+    CSession();
+    ~CSession();
 
 public:
     SOCKET sock;
@@ -70,6 +65,8 @@ public:
 
     CRingBuffer recvQ;
     CRingBuffer sendQ;
+
+    CRingBuffer testQ;
 
     OVERLAPPED overlappedRecv;
     OVERLAPPED overlappedSend;
@@ -82,8 +79,9 @@ public:
 
     UINT32 SendingCount;
 
-    CRITICAL_SECTION cs_session;
-
     // 스레드 ID, 액션 번호를 pair로 진행
     CircularQueue<std::pair<DWORD, ACTION>> debugQueue;
+
+    bool doRecv;
+    bool doSend;
 };

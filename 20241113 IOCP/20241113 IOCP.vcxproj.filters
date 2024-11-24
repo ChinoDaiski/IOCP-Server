@@ -65,6 +65,9 @@
     <ClCompile Include="CircularQueue.cpp">
       <Filter>소스 파일\97. CircularQueue</Filter>
     </ClCompile>
+    <ClCompile Include="RingBuffer.cpp">
+      <Filter>소스 파일\01. RingBuffer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Content.h">
