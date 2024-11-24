@@ -66,8 +66,6 @@ public:
     CRingBuffer recvQ;
     CRingBuffer sendQ;
 
-    CRingBuffer testQ;
-
     OVERLAPPED overlappedRecv;
     OVERLAPPED overlappedSend;
 

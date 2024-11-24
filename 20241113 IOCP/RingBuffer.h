@@ -28,6 +28,8 @@ public:
 
     int DirectEnqueueSize() const;
     int DirectDequeueSize() const;
+    UINT32 DirectEnqueueSize(UINT32 readPos, UINT32 writePos) const;
+    UINT32 DirectDequeueSize(UINT32 readPos, UINT32 writePos) const;
 
     int MoveRear(int iSize);
     int MoveFront(int iSize);
@@ -40,6 +42,9 @@ public:
     // 반환값으로 만들어진 WSABUF 갯수를 반환.
     int makeWSASendBuf(LPWSABUF wsaBuf);
     int makeWSARecvBuf(LPWSABUF wsaBuf);
+
+    UINT32 GetReadPos(void) { return readPos; }
+    UINT32 GetWritePos(void) { return writePos; }
 
 public:
     UINT32 mod(UINT32 val) const {

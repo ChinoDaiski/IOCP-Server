@@ -87,15 +87,15 @@ int CRingBuffer::Peek(char* chpDest, UINT32 iSize) const
     UINT32 toRead = std::min(iSize, usedSize);
 
     // 첫 번째 연속 구간에서 읽기
-    UINT32 firstReadSize = std::min(toRead, capacity - r - 1);
-    UINT32 secondReadSize = toRead - firstReadSize - 1;
+    UINT32 firstReadSize = std::min(toRead, capacity - r);
+    UINT32 secondReadSize = toRead - firstReadSize;
 
     ZeroMemory(chpDest, 60);
 
     std::memcpy(chpDest, &buffer[r], firstReadSize);
 
     // 두 번째 연속 구간에서 읽기
-    if (secondReadSize != -1)
+    if (secondReadSize != 0)
         std::memcpy(chpDest + firstReadSize, &buffer[0], secondReadSize);
 
     return toRead;
@@ -119,6 +119,16 @@ int CRingBuffer::DirectDequeueSize() const
     UINT32 w = writePos;
     UINT32 r = readPos;
     return (w >= r) ? (w - r) : (capacity - r);
+}
+
+UINT32 CRingBuffer::DirectEnqueueSize(UINT32 readPos, UINT32 writePos) const
+{
+    return (readPos > writePos) ? (readPos - writePos - 1) : (capacity - writePos - (readPos == 0 ? 1 : 0));
+}
+
+UINT32 CRingBuffer::DirectDequeueSize(UINT32 readPos, UINT32 writePos) const
+{
+    return (writePos >= readPos) ? (writePos - readPos) : (capacity - readPos);
 }
 
 int CRingBuffer::MoveRear(int iSize)
@@ -152,6 +162,9 @@ int CRingBuffer::makeWSASendBuf(LPWSABUF wsaBuf)
         wsaBuf[0].buf = buffer + r;
         wsaBuf[0].len = capacity - r;
 
+        if (w == 0)
+            return 1;
+
         wsaBuf[1].buf = buffer;
         wsaBuf[1].len = w - 1;
 
@@ -176,8 +189,10 @@ int CRingBuffer::makeWSARecvBuf(LPWSABUF wsaBuf)
     // r ... w 이렇게 있을 때
     else
     {
+        UINT32 dirEnqSize = DirectEnqueueSize(r, w);
+
         wsaBuf[0].buf = buffer + w;
-        wsaBuf[0].len = capacity - w;
+        wsaBuf[0].len = dirEnqSize;
 
         if (r == 0)
             return 1;

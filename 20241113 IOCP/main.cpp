@@ -102,8 +102,8 @@ int main(void)
     hAcceptThread = (HANDLE)_beginthreadex(NULL, 0, AcceptThread, &serverLib, 0, (unsigned int*)&dwThreadID);
     hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
     hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
-    //hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
-    //hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
+    hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
+    hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, &serverContent, 0, (unsigned int*)&dwThreadID);
     //hWorkerThread = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, (LPVOID)0, 0, (unsigned int*)&dwThreadID);
 
 
@@ -233,12 +233,12 @@ unsigned int WINAPI WorkerThread(void* pArg)
 
         // recv 완료 통지가 온 경우
         else if (pOverlapped == &pSession->overlappedRecv) {
+            pSession->doSend = false;
+
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_COMPLETION_NOTICE));
             
             // WSARecv는 링버퍼를 사용하기에 버퍼에 데이터만 존재하고, 사이즈는 증가하지 않았다. 고로 사이즈를 증가시킨다.
             pSession->recvQ.MoveRear(transferredDataLen);
-
-            pSession->testQ.Enqueue(pSession->recvQ.GetFrontBufferPtr(), transferredDataLen);
 
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_START_WHILE));
             while (true)
@@ -253,6 +253,12 @@ unsigned int WINAPI WorkerThread(void* pArg)
                 // 2. RecvQ에서 PACKET_HEADER 정보 Peek
                 PACKET_HEADER header;
                 int headerSize = sizeof(header);
+
+                if (pSession->recvQ.GetReadPos() >= 1991)
+                {
+                    int a = 10;
+                }
+
                 int retVal = pSession->recvQ.Peek(reinterpret_cast<char*>(&header), headerSize);
 
                 // 3. 헤더의 len값과 RecvQ의 데이터 사이즈 비교
@@ -291,6 +297,8 @@ unsigned int WINAPI WorkerThread(void* pArg)
 
         // send 완료 통지가 온 경우
         else if (pOverlapped == &pSession->overlappedSend) {
+            pSession->doRecv = false;
+
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_COMPLETION_NOTICE));
 
             // sendFlag를 먼저 놓고, sendQ에 보낼 데이터가 있는지 확인한다. 

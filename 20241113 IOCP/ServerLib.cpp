@@ -104,56 +104,57 @@ void ServerLib::SendPost(CSession* pSession)
     int retval;
     int error;
 
-    WSABUF wsaBuf[2];
-    wsaBuf[0].buf = pSession->sendQ.GetFrontBufferPtr();
-    wsaBuf[0].len = pSession->sendQ.DirectDequeueSize();
+    //WSABUF wsaBuf[2];
+    //wsaBuf[0].buf = pSession->sendQ.GetFrontBufferPtr();
+    //wsaBuf[0].len = pSession->sendQ.DirectDequeueSize();
 
-    wsaBuf[1].buf = pSession->sendQ.GetBufferPtr();
+    //wsaBuf[1].buf = pSession->sendQ.GetBufferPtr();
 
-    int transferredDataLen = pSession->sendQ.GetUseSize();
+    //int transferredDataLen = pSession->sendQ.GetUseSize();
 
-    // 보내려는 데이터의 길이가 sendQ에서 뺄 수 있는 데이터의 길이보다 크다면
-    if (transferredDataLen > pSession->sendQ.DirectDequeueSize())
-    {
-        wsaBuf[1].len = transferredDataLen - wsaBuf[0].len;
-    }
-    // 보내려는 데이터의 길이가 sendQ에서 뺄 수 있는 데이터의 길이와 비교했을 때 작거나 같다면
-    else
-    {
-        wsaBuf[1].len = 0;
-    }
+    //// 보내려는 데이터의 길이가 sendQ에서 뺄 수 있는 데이터의 길이보다 크다면
+    //if (transferredDataLen > pSession->sendQ.DirectDequeueSize())
+    //{
+    //    wsaBuf[1].len = transferredDataLen - wsaBuf[0].len;
+    //}
+    //// 보내려는 데이터의 길이가 sendQ에서 뺄 수 있는 데이터의 길이와 비교했을 때 작거나 같다면
+    //else
+    //{
+    //    wsaBuf[1].len = 0;
+    //}
 
-    // send하는 데이터가 0이라면
-    if ((wsaBuf[0].len + wsaBuf[1].len) == 0)
-        // return 할 것.
-        return;
-
-
-    if (memcmp(pSession->testQ.GetFrontBufferPtr(), wsaBuf[0].buf, wsaBuf[0].len) == 0)
-    {
-        pSession->testQ.MoveFront(wsaBuf[0].len);
-    }
-    else
-    {
-        DebugBreak();
-    }
-
-    if (memcmp(pSession->testQ.GetFrontBufferPtr(), wsaBuf[1].buf, wsaBuf[1].len) == 0)
-    {
-        pSession->testQ.MoveFront(wsaBuf[1].len);
-    }
-    else
-    {
-        DebugBreak();
-    }
+    //// send하는 데이터가 0이라면
+    //if ((wsaBuf[0].len + wsaBuf[1].len) == 0)
+    //    // return 할 것.
+    //    return;
 
 
+    //if (memcmp(pSession->testQ.GetFrontBufferPtr(), wsaBuf[0].buf, wsaBuf[0].len) == 0)
+    //{
+    //    pSession->testQ.MoveFront(wsaBuf[0].len);
+    //}
+    //else
+    //{
+    //    DebugBreak();
+    //}
+
+    //if (memcmp(pSession->testQ.GetFrontBufferPtr(), wsaBuf[1].buf, wsaBuf[1].len) == 0)
+    //{
+    //    pSession->testQ.MoveFront(wsaBuf[1].len);
+    //}
+    //else
+    //{
+    //    DebugBreak();
+    //}
+
+    WSABUF sendBuf[2];
+    int bufCnt = pSession->sendQ.makeWSASendBuf(sendBuf);
 
     DWORD flags{};
 
     InterlockedIncrement(&pSession->IOCount);
 
-    retval = WSASend(pSession->sock, wsaBuf, 2, NULL, flags, &pSession->overlappedSend, NULL);
+    retval = WSASend(pSession->sock, sendBuf, bufCnt, NULL, flags, &pSession->overlappedSend, NULL);
     pSession->doSend = true;
 
     error = WSAGetLastError();
@@ -185,17 +186,19 @@ void ServerLib::RecvPost(CSession* pSession)
 
     DWORD flags{};
 
-    // wsaBuf를 만드는 함수를 제작
     WSABUF recvBuf[2];
-    recvBuf[0].buf = pSession->recvQ.GetFrontBufferPtr();
-    recvBuf[0].len = pSession->recvQ.DirectEnqueueSize();
-    recvBuf[1].buf = pSession->recvQ.GetBufferPtr();
-    recvBuf[1].len = pSession->recvQ.GetBufferCapacity() - pSession->recvQ.DirectEnqueueSize();
+    int bufCnt = pSession->recvQ.makeWSARecvBuf(recvBuf);
+
+    //WSABUF recvBuf[2];
+    //recvBuf[0].buf = pSession->recvQ.GetFrontBufferPtr();
+    //recvBuf[0].len = pSession->recvQ.DirectEnqueueSize();
+    //recvBuf[1].buf = pSession->recvQ.GetBufferPtr();
+    //recvBuf[1].len = pSession->recvQ.GetBufferCapacity() - pSession->recvQ.DirectEnqueueSize();
 
     InterlockedIncrement(&pSession->IOCount);
 
     // 비동기 recv 처리를 위해 먼저 recv를 걸어둠. 받은 데이터는 wsaBuf에 등록한 메모리에 채워질 예정.
-    retVal = WSARecv(pSession->sock, recvBuf, 2, NULL, &flags, &pSession->overlappedRecv, NULL); 
+    retVal = WSARecv(pSession->sock, recvBuf, bufCnt, NULL, &flags, &pSession->overlappedRecv, NULL);
     pSession->doRecv = true;
 
     error = WSAGetLastError();
