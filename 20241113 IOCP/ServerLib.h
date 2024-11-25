@@ -35,7 +35,7 @@ private:
     CSession sessionArr[MAX_SESSION_CNT];
     UINT32 g_ID;    // 세션이 접속할 때 마다 1씩 증가.
 
-    //CircularQueue<std::pair<UINT64, UINT16>> debugSessionIndexQueue;
+    CircularQueue<std::pair<UINT64, UINT16>> debugSessionIndexQueue;
 
 private:
     IContent* pIContent;

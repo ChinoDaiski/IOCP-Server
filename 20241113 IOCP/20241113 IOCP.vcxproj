@@ -151,6 +151,7 @@
   <ItemGroup>
     <ClCompile Include="CircularQueue.cpp" />
     <ClCompile Include="Content.cpp" />
+    <ClCompile Include="CrashDump.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Packet.cpp" />
     <ClCompile Include="pch.cpp">
@@ -166,6 +167,7 @@
   <ItemGroup>
     <ClInclude Include="CircularQueue.h" />
     <ClInclude Include="Content.h" />
+    <ClInclude Include="CrashDump.h" />
     <ClInclude Include="IContent.h" />
     <ClInclude Include="Packet.h" />
     <ClInclude Include="pch.h" />

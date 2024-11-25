@@ -42,6 +42,9 @@
     <Filter Include="소스 파일\97. CircularQueue">
       <UniqueIdentifier>{14b00c09-2a12-4085-aefd-5e368435f655}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\96. CrashDump">
+      <UniqueIdentifier>{c438b765-ccd4-40b2-8b4c-da99c6d019f5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Content.cpp">
@@ -67,6 +70,9 @@
     </ClCompile>
     <ClCompile Include="RingBuffer.cpp">
       <Filter>소스 파일\01. RingBuffer</Filter>
+    </ClCompile>
+    <ClCompile Include="CrashDump.cpp">
+      <Filter>소스 파일\96. CrashDump</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -99,6 +105,9 @@
     </ClInclude>
     <ClInclude Include="CircularQueue.h">
       <Filter>소스 파일\97. CircularQueue</Filter>
+    </ClInclude>
+    <ClInclude Include="CrashDump.h">
+      <Filter>소스 파일\96. CrashDump</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

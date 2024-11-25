@@ -83,7 +83,7 @@ CSession* ServerLib::FetchSession(void)
     // ÄÜÅÙÃ÷ accept ÇÔ¼ö »ý¼º -> ¿¡ÄÚ°¡ ¾Æ´Ñ ÁøÂ¥·Î ÄÜÅÙÃ÷¿¡¼­ ¹º°¡ ¸¸µé ¶§ µî·Ï ¿ä¸Á.
     //pIContent->OnAccept(g_ID);
 
-    //debugSessionIndexQueue.enqueue(std::make_pair(g_ID, index));
+    debugSessionIndexQueue.enqueue(std::make_pair(g_ID, index));
 
     return &sessionArr[index];
 }

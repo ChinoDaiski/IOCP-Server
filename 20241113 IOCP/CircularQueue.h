@@ -19,10 +19,10 @@ public:
 
     // 큐에 데이터 추가 (enqueue)
     void enqueue(const T& data) {
-        //UINT32 inc = InterlockedIncrement(&count);
+        UINT32 inc = InterlockedIncrement(&count);
 
-        //UINT32 index = inc % capacity;  // 원형 배열 처리
-        //queue[index] = data;
+        UINT32 index = inc % capacity;  // 원형 배열 처리
+        queue[index] = data;
     }
 
 private:

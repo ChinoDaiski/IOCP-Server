@@ -17,3 +17,6 @@
 
 #include <Windows.h>
 #include <algorithm>
+
+#include "CrashDump.h"
+CCrashDump dump;
