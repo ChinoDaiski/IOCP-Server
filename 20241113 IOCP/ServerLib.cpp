@@ -1,83 +1,112 @@
 
 #include "pch.h"
 #include "ServerLib.h"
-#include "Session.h"
+//#include "Session.h"
 
 #include "Protocol.h"
 
 ServerLib::ServerLib(void)
     : g_ID{ 0 }, pIContent{ NULL }
 {
-    InitializeCriticalSection(&cs_sessionMap);
 }
 
 ServerLib::~ServerLib(void)
 {
-    DeleteCriticalSection(&cs_sessionMap);
 }
 
-void ServerLib::SendPacket(int sessionID, CPacket* pPacket)
+void ServerLib::SendPacket(UINT64 sessionID, CPacket* pPacket)
 {
     DWORD curThreadID = GetCurrentThreadId();
 
 	// 세션 검색
-    EnterCriticalSection(&cs_sessionMap);
-	auto iter = sessionMap.find(sessionID);
-    LeaveCriticalSection(&cs_sessionMap);
+    UINT16 index = static_cast<UINT16>(sessionID);
+    CSession* pSession = &sessionArr[index];
 
 	// 세션을 찾았다면
-	if (iter != sessionMap.end())
+    if (pSession->id == sessionID)
 	{
-        iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_FIND));
+        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_FIND));
 
         CPacket packet;
         PACKET_HEADER header;
         header.bySize = pPacket->GetDataSize();
         packet.PutData((char*)&header, sizeof(PACKET_HEADER));
         packet.PutData(pPacket->GetFrontBufferPtr(), pPacket->GetDataSize());
-        iter->second->sendQ.Enqueue(packet.GetFrontBufferPtr(), packet.GetDataSize());
+        pSession->sendQ.Enqueue(packet.GetFrontBufferPtr(), packet.GetDataSize());
 
-        iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_ENQ));
+        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_ENQ));
 	}
+    // 아니라면 재활용되면서 이상한 값이 나올 수 있다.
 	else
 	{
 		DebugBreak();
 	}
 
-    iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_START_SENDPOST));
+    pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_START_SENDPOST));
 
-    // 컨텐츠이지만 SendPost를 
-    SendPost(iter->second);
+    SendPost(pSession);
 
-    iter->second->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_SENDPOST));
+    pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_SENDPOST));
 }
 
-void ServerLib::RegisterSession(CSession* _pSession)
+CSession* ServerLib::FetchSession(void)
 {
-    EnterCriticalSection(&cs_sessionMap);
-	sessionMap.emplace(g_ID, _pSession);
-    LeaveCriticalSection(&cs_sessionMap);
-	++g_ID;
+    UINT64 sessionID = 0;
 
-	// 콘텐츠 accept 함수 생성 -> 에코가 아닌 진짜로 콘텐츠에서 뭔가 만들 때 등록 요망.
-	//pIContent->OnAccept(g_ID);
+    // 상위 6byte는 접속마다 1씩 증가하는 g_ID 값을 넣는다.
+
+    // 전체 64bit중 상위 48bit를 사용
+    sessionID = g_ID;
+    sessionID <<= 16;
+
+    // 사용한 g_ID는 중복 방지를 위해 1증가
+    g_ID++;
+
+    UINT16 index = UINT16_MAX;
+    // 배열을 for문을 돌며 사용하지 않는 세션을 찾음
+    for (UINT16 i = 0; i < MAX_SESSION_CNT; ++i)
+    {
+        if (InterlockedExchange(&sessionArr[i].useFlag, 1) != 0)
+            continue;
+
+        index = i;
+        break;
+    }
+
+    if (index == UINT16_MAX)
+        return nullptr;
+
+    sessionID |= index;
+
+    sessionArr[index].id = sessionID;
+
+    // 콘텐츠 accept 함수 생성 -> 에코가 아닌 진짜로 콘텐츠에서 뭔가 만들 때 등록 요망.
+    //pIContent->OnAccept(g_ID);
+
+    //debugSessionIndexQueue.enqueue(std::make_pair(g_ID, index));
+
+    return &sessionArr[index];
 }
 
 void ServerLib::DeleteSession(CSession* _pSession)
 {
-    EnterCriticalSection(&cs_sessionMap);
-	auto iter = sessionMap.find(_pSession->id);
-    LeaveCriticalSection(&cs_sessionMap);
+    // 소켓 close
+    closesocket(_pSession->sock);
+    _pSession->sock = INVALID_SOCKET;
 
-	if (iter != sessionMap.end())
-	{
-        EnterCriticalSection(&cs_sessionMap);
-		sessionMap.erase(iter);
-        LeaveCriticalSection(&cs_sessionMap);
-		delete _pSession;
-	}
+    // useFlag를 0으로 변경
+    UINT32 flag = InterlockedExchange(&_pSession->useFlag, 0);
 
-	// 세션을 삭제했으니 이후에 콘텐츠에게 세션이 삭제되었음을 알린느 코드가 들어가야함. 나중에 추가
+    if (flag != 1)
+    {
+        UINT16 index = static_cast<UINT16>(_pSession->id);
+        UINT64 gID = static_cast<UINT64>(_pSession->id >> 16);
+
+        DebugBreak();
+    }
+
+	// 세션을 삭제했으니 이후에 콘텐츠에게 세션이 삭제되었음을 알리는 코드가 들어가야함. 나중에 추가.
+    // ~ 
 }
 
 // sendQ에 데이터를 넣고, WSASend를 호출
@@ -96,49 +125,6 @@ void ServerLib::SendPost(CSession* pSession)
 
     int retval;
     int error;
-
-    //WSABUF wsaBuf[2];
-    //wsaBuf[0].buf = pSession->sendQ.GetFrontBufferPtr();
-    //wsaBuf[0].len = pSession->sendQ.DirectDequeueSize();
-
-    //wsaBuf[1].buf = pSession->sendQ.GetBufferPtr();
-
-    //int transferredDataLen = pSession->sendQ.GetUseSize();
-
-    //// 보내려는 데이터의 길이가 sendQ에서 뺄 수 있는 데이터의 길이보다 크다면
-    //if (transferredDataLen > pSession->sendQ.DirectDequeueSize())
-    //{
-    //    wsaBuf[1].len = transferredDataLen - wsaBuf[0].len;
-    //}
-    //// 보내려는 데이터의 길이가 sendQ에서 뺄 수 있는 데이터의 길이와 비교했을 때 작거나 같다면
-    //else
-    //{
-    //    wsaBuf[1].len = 0;
-    //}
-
-    //// send하는 데이터가 0이라면
-    //if ((wsaBuf[0].len + wsaBuf[1].len) == 0)
-    //    // return 할 것.
-    //    return;
-
-
-    //if (memcmp(pSession->testQ.GetFrontBufferPtr(), wsaBuf[0].buf, wsaBuf[0].len) == 0)
-    //{
-    //    pSession->testQ.MoveFront(wsaBuf[0].len);
-    //}
-    //else
-    //{
-    //    DebugBreak();
-    //}
-
-    //if (memcmp(pSession->testQ.GetFrontBufferPtr(), wsaBuf[1].buf, wsaBuf[1].len) == 0)
-    //{
-    //    pSession->testQ.MoveFront(wsaBuf[1].len);
-    //}
-    //else
-    //{
-    //    DebugBreak();
-    //}
 
     WSABUF sendBuf[2];
     int bufCnt = pSession->sendQ.makeWSASendBuf(sendBuf);
@@ -172,7 +158,6 @@ void ServerLib::SendPost(CSession* pSession)
     InterlockedIncrement(&pSession->IOCount);
 
     retval = WSASend(pSession->sock, sendBuf, bufCnt, NULL, flags, &pSession->overlappedSend, NULL);
-    pSession->doSend = true;
 
     error = WSAGetLastError();
     if (retval == SOCKET_ERROR)
@@ -181,10 +166,8 @@ void ServerLib::SendPost(CSession* pSession)
             ;
         else
         {
-            pSession->doSend = false;
-
             // 상대방쪽에서 먼저 끊음.
-            if (error == WSAECONNRESET)
+            if (error == WSAECONNRESET || error == WSAECONNABORTED)
             {
                 InterlockedDecrement(&pSession->IOCount);
             }
@@ -204,17 +187,10 @@ void ServerLib::RecvPost(CSession* pSession)
     WSABUF recvBuf[2];
     int bufCnt = pSession->recvQ.makeWSARecvBuf(recvBuf);
 
-    //WSABUF recvBuf[2];
-    //recvBuf[0].buf = pSession->recvQ.GetFrontBufferPtr();
-    //recvBuf[0].len = pSession->recvQ.DirectEnqueueSize();
-    //recvBuf[1].buf = pSession->recvQ.GetBufferPtr();
-    //recvBuf[1].len = pSession->recvQ.GetBufferCapacity() - pSession->recvQ.DirectEnqueueSize();
-
     InterlockedIncrement(&pSession->IOCount);
 
     // 비동기 recv 처리를 위해 먼저 recv를 걸어둠. 받은 데이터는 wsaBuf에 등록한 메모리에 채워질 예정.
     retVal = WSARecv(pSession->sock, recvBuf, bufCnt, NULL, &flags, &pSession->overlappedRecv, NULL);
-    pSession->doRecv = true;
 
     error = WSAGetLastError();
 
@@ -223,8 +199,12 @@ void ServerLib::RecvPost(CSession* pSession)
         if (error == ERROR_IO_PENDING)
             return;
 
-        pSession->doRecv = false;
         InterlockedDecrement(&pSession->IOCount);
+
+        // 상대방 쪽에서 먼저 연결을 끊음. 
+        if (error == WSAECONNRESET || error == WSAECONNABORTED)
+            return;
+
         std::cerr << "RecvPost : WSARecv - " << error << "\n"; // 이 부분은 없어야하는데 어떤 오류가 생길지 모르니깐 확인 차원에서 넣어봄.
         // 나중엔 멀티스레드 로직에 영향을 미치지 않는 OnError 등으로 비동기 출력문으로 교체 예정.
     }

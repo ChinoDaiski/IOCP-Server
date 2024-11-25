@@ -6,7 +6,7 @@
 
 UINT32 CPlayer::g_ID = 0;
 
-void ServerContent::OnRecv(int sessionID, CPacket* pPacket)
+void ServerContent::OnRecv(UINT64 sessionID, CPacket* pPacket)
 {
 	// ¿©±â¼­ ÄÁÅÙÃ÷ Ã³¸®°¡ µé¾î°¨.
 	// ~ ÄÁÅÙÃ÷ ~
@@ -15,7 +15,7 @@ void ServerContent::OnRecv(int sessionID, CPacket* pPacket)
 	pIServer->SendPacket(sessionID, pPacket);
 }
 
-void ServerContent::OnAccept(int sessionID)
+void ServerContent::OnAccept(UINT64 sessionID)
 {
 	CPlayer* pPlayer = new CPlayer;
 	pPlayer->sessionID = sessionID;

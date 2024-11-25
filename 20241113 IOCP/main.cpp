@@ -62,6 +62,7 @@ int main(void)
     if (setsockopt(g_listenSocket, SOL_SOCKET, SO_SNDBUF, (const char*)&recvBufSize, sizeof(recvBufSize)) == SOCKET_ERROR) {
         std::cerr << "setsockopt failed with error: " << WSAGetLastError() << std::endl;
         closesocket(g_listenSocket);
+        g_listenSocket = INVALID_SOCKET;
         WSACleanup();
         return 1;
     }
@@ -160,12 +161,6 @@ UINT32 ReleaseSession(CSession* pSession)
 {
     DWORD curThreadID = GetCurrentThreadId();
 
-    if (pSession->sock != INVALID_SOCKET)
-    {
-        closesocket(pSession->sock);
-        pSession->sock = INVALID_SOCKET;
-    }
-
     pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RELEASE_SESSION));
     return InterlockedDecrement(&pSession->IOCount);
 }
@@ -214,6 +209,22 @@ unsigned int WINAPI WorkerThread(void* pArg)
         // transferredDataLen이 0인 경우(rst가 온 경우) <- 이건 send 쪽에서 0을 정상적으로 보낼 수 있으니 send에서 0을 보내는 경우는 막도록 처리
         if (retval == FALSE || transferredDataLen == 0)
         {
+            // 상대쪽에서 명시적으로 closesocket이나 shutdown을 호출하지 않고 랜뽑이나 프로세스의 강제종료를 하는 경우 rst가 서버로 오지 않는다.
+            // 이때 서버쪽에서 send/recv를 시도하면 나는 에러가 ERROR_NETNAME_DELETED 이다.
+            if (error == ERROR_NETNAME_DELETED)
+            {
+                int a = 10;
+            }
+
+
+            if (retval == FALSE)
+                pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RETVAL_FALSE));
+
+            if (transferredDataLen == 0)
+                pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_LEN0));
+
+            pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION(error + 100000)));
+
             // 소켓이 유효하다면 closesocket 하고, 세션의 IO Count를 1 감소한다. 
             IOCount = ReleaseSession(pSession);
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, (ACTION((UINT32)ACTION::IOCOUNT_0 + IOCount))));
@@ -223,6 +234,7 @@ unsigned int WINAPI WorkerThread(void* pArg)
             if (IOCount == 0)
             {
                 // 세션 삭제
+                pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_CALL_DELETE_SESSION1));
                 g_pServer->DeleteSession(pSession);
                 continue;
             }
@@ -233,7 +245,6 @@ unsigned int WINAPI WorkerThread(void* pArg)
 
         // recv 완료 통지가 온 경우
         else if (pOverlapped == &pSession->overlappedRecv) {
-            pSession->doSend = false;
 
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_COMPLETION_NOTICE));
             
@@ -300,8 +311,6 @@ unsigned int WINAPI WorkerThread(void* pArg)
 
         // send 완료 통지가 온 경우
         else if (pOverlapped == &pSession->overlappedSend) {
-            pSession->doRecv = false;
-
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_COMPLETION_NOTICE));
 
             // sendFlag를 먼저 놓고, sendQ에 보낼 데이터가 있는지 확인한다. 
@@ -343,6 +352,7 @@ unsigned int WINAPI WorkerThread(void* pArg)
         if (IOCount == 0)
         {
             // 세션 삭제
+            pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_CALL_DELETE_SESSION2));
             g_pServer->DeleteSession(pSession);
         }
     }
@@ -372,11 +382,14 @@ unsigned int WINAPI AcceptThread(void* pArg)
 
         // 세션 생성
         
-        // 소켓 정보 구조체 할당
-        CSession* pSession = new CSession;
+        // 소켓 정보 구조체 뽑아오기
+        CSession* pSession = g_pServer->FetchSession(); // 뽑아오면서 ID는 이미 부여된 상태
 
+        // 세션이 가득찬 상태, 말이 안됨
         if (pSession == NULL)
-            break;
+        {
+            DebugBreak();
+        }
 
         pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_AFTER_NEW));
 
@@ -399,20 +412,19 @@ unsigned int WINAPI AcceptThread(void* pArg)
         // client 소켓 연결
         pSession->sock = client_sock;
 
-        // client ID 부여
-        pSession->id = g_id;
-        g_id++;
-
-        // IO Count 부여, 초기화 할 시기로 아직 등록도 전이니 0으로 설정
+        // 삭제를 위한 IO Count 부여, 초기화 할 시기로 아직 등록도 전이니 0으로 설정
         pSession->IOCount = 0;
 
         // send를 1회 제한하기 위한 flag 변수
         pSession->sendFlag = 0;
 
-        pSession->SendingCount = 0;
+        // 재사용을 위한 useFlag, 삭제를 위한 IO Count와 다른 변수를 사용한다.
+        // 이이 fetchSession에서 0 -> 1로 바꿈. 그래서 여기서 안함
+        //pSession->useFlag = 0;
 
-        pSession->doRecv = false;
-        pSession->doSend = false;
+        // 링버퍼 초기화
+        pSession->sendQ.ClearBuffer();
+        pSession->recvQ.ClearBuffer();
 
 
         // 소켓과 입출력 완료 포트 연결 - 새로 연견될 소켓을 key를 해당 소켓과 연결된 세션 구조체의 포인터로 하여 IOCP와 연결한다.
@@ -420,21 +432,24 @@ unsigned int WINAPI AcceptThread(void* pArg)
         pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_CONNECT_IOCP));
 
         // 여기서 전역적인 세션 맵이나 배열에 세션을 등록
-        g_pServer->RegisterSession(pSession);
-        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_REGISTER_SESSION));
 
         // recv 처리, 왜 등록을 먼저하고, 이후에 WSARecv를 하냐면, 등록 전에 Recv 완료통지가 올 수 있음. 그래서 등록을 먼저함
         g_pServer->RecvPost(pSession);
         pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_RECVPOST));
 
 
+        // 더미 테스트를 위해 처음 접속할 때 정해진 data를 클라에 전송.
+        CPacket packet;
+        UINT64 data = 0x7fffffffffffffff;
+        packet.PutData((char*)&data, sizeof(data));
 
-
+        g_pServer->SendPacket(pSession->id, &packet);
 
         // 이 시점에선 IO Count가 싱글 스레드나 다름 없기에 interlock없이 생으로 검사 가능.
         if (pSession->IOCount == 0)
         {
             // 만약 WSARecv가 실패했다면 완료통지도 오지 않기에 여기서 바로 세션을 삭제해줘야한다.
+            pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_CALL_DELETE_SESSION3));
             g_pServer->DeleteSession(pSession);
             pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_DELETE_SESSION));
         }
