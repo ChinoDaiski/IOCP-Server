@@ -1,0 +1,384 @@
+#include "pch.h"
+#include "Protocol.h"
+#include "IServer.h"
+#include "Session.h"
+#include "Packet.h"
+
+void CLanServer::RecvPost(CSession* pSession)
+{
+    int retVal;
+    int error;
+
+    DWORD flags{};
+
+    WSABUF recvBuf[2];
+    int bufCnt = pSession->recvQ.makeWSARecvBuf(recvBuf);
+
+    InterlockedIncrement(&pSession->IOCount);
+
+    // 비동기 recv 처리를 위해 먼저 recv를 걸어둠. 받은 데이터는 wsaBuf에 등록한 메모리에 채워질 예정.
+    retVal = WSARecv(pSession->sock, recvBuf, bufCnt, NULL, &flags, &pSession->overlappedRecv, NULL);
+
+    error = WSAGetLastError();
+
+    if (retVal == SOCKET_ERROR)
+    {
+        if (error == ERROR_IO_PENDING)
+            return;
+
+        InterlockedDecrement(&pSession->IOCount);
+
+        // 상대방 쪽에서 먼저 연결을 끊음. 
+        if (error == WSAECONNRESET || error == WSAECONNABORTED)
+            return;
+
+        std::cerr << "RecvPost : WSARecv - " << error << "\n"; // 이 부분은 없어야하는데 어떤 오류가 생길지 모르니깐 확인 차원에서 넣어봄.
+        // 나중엔 멀티스레드 로직에 영향을 미치지 않는 OnError 등으로 비동기 출력문으로 교체 예정.
+    }
+}
+
+void CLanServer::SendPost(CSession* pSession)
+{
+    DWORD curThreadID = GetCurrentThreadId();
+
+    // 보낼 것이 있을 때 sendflag 확인함.
+    // sending 하는 중이라면
+    if (InterlockedExchange(&pSession->sendFlag, 1) == 1)
+    {
+        //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SERVERLIB_SENDPOST_SOMEONE_SENDING));
+        // 넘어감
+        return;
+    }
+
+    int retval;
+    int error;
+
+    WSABUF sendBuf[2];
+    int bufCnt = pSession->sendQ.makeWSASendBuf(sendBuf);
+
+    // A 스레드가 사이즈를 확인하고 아직 interlock을 호출하지 않은 상황에서, 컨텍스트 스위칭. 
+    // B 스레드가 recvPost 진행하면서 sendflag를 1로 바꾸고 진행
+    // C 스레드가 send 완료통지를 받아 sendflag를 0으로 바꿈
+    // A 스레드가 일어나서 interlock으로 0 에서 1로 바꾸고 send 진행. 근데 이미 send 되어버린 상황에서 send 0이 나올 수 있음.
+    // 이러면 우리 구조에서 recv 0일때 소켓을 제거하기에 이를 해결하기 위해서 send시 0인 상황을 확인해서 진행을 도중에 멈춤.
+    int sendLen = 0;
+    for (int i = 0; i < bufCnt; ++i)
+    {
+        sendLen += sendBuf[i].len;
+    }
+
+    if (sendLen == 0)
+    {
+        //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SERVERLIB_SENDPOST_SEND0));
+
+        // 실제 WSASend를 안하니깐 sendflag를 풀어줘야한다.
+        InterlockedExchange(&pSession->sendFlag, 0);
+        return;
+    }
+
+
+    //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SERVERLIB_SENDPOST_REAL_SEND));
+
+
+    DWORD flags{};
+
+    InterlockedIncrement(&pSession->IOCount);
+
+    retval = WSASend(pSession->sock, sendBuf, bufCnt, NULL, flags, &pSession->overlappedSend, NULL);
+
+    error = WSAGetLastError();
+    if (retval == SOCKET_ERROR)
+    {
+        if (error == ERROR_IO_PENDING)
+            ;
+        else
+        {
+            // 상대방쪽에서 먼저 끊음.
+            if (error == WSAECONNRESET || error == WSAECONNABORTED)
+            {
+                InterlockedDecrement(&pSession->IOCount);
+            }
+            else
+                DebugBreak();
+        }
+    }
+}
+
+unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
+{
+    CLanServer* pThis = (CLanServer*)pArg;
+
+    DWORD curThreadID = GetCurrentThreadId();
+
+    int retval;
+    int error;
+    UINT32 IOCount;
+
+    // 비동기 입출력 완료 기다리기
+    DWORD transferredDataLen;
+
+    CSession* pSession;
+
+    // GQCS의 반환값은 성공하면 TRUE, 아니면 FALSE.
+    OVERLAPPED* pOverlapped;
+
+    while (1) {
+        transferredDataLen = 0;
+        memset(&pOverlapped, 0, sizeof(pOverlapped));
+
+        // GQCS로 IOCP 핸들로 온 완료통지를 가져옴.
+        // 반환값으로 몇 바이트를 받았는지, 어떤 키인지, 어떤 오버랩 구조체를 사용했는지를 알려준다.
+        retval = GetQueuedCompletionStatus(pThis->hIOCP, &transferredDataLen, (PULONG_PTR)&pSession, &pOverlapped, INFINITE);
+        ////pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_AFTER_GQCS));
+
+        error = WSAGetLastError();
+
+        ////pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_ENTER_CS));
+
+
+        // PQCS로 넣은 완료 통지값(0, 0, NULL)이 온 경우. 즉, 내(main 스레드)가 먼저 끊은 경우
+        // 완료통지가 있던 말던 스레드를 종료.
+        if ((transferredDataLen == 0 && pSession == 0 && pOverlapped == nullptr))
+        {
+            ////pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_LEAVE_CS1));
+            break;
+        }
+
+        // 예외 처리 - GQCS가 실패한 경우, send,recv 하던중 문제가 생겨서 closesocket을 해서 해당 소켓을 사용하는 완료통지가 모두 실패한 경우이다.
+        // transferredDataLen이 0인 경우(rst가 온 경우) <- 이건 send 쪽에서 0을 정상적으로 보낼 수 있으니 send에서 0을 보내는 경우는 막도록 처리
+        if (retval == FALSE || transferredDataLen == 0)
+        {
+            // 상대쪽에서 명시적으로 closesocket이나 shutdown을 호출하지 않고 랜뽑이나 프로세스의 강제종료를 하는 경우 rst가 서버로 오지 않는다.
+            // 이때 서버쪽에서 send/recv를 시도하면 나는 에러가 ERROR_NETNAME_DELETED 이다.
+            if (error == ERROR_NETNAME_DELETED)
+            {
+                //int a = 10;
+            }
+        }
+
+        // recv 완료 통지가 온 경우
+        else if (pOverlapped == &pSession->overlappedRecv) {
+
+            //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_COMPLETION_NOTICE));
+
+            // WSARecv는 링버퍼를 사용하기에 버퍼에 데이터만 존재하고, 사이즈는 증가하지 않았다. 고로 사이즈를 증가시킨다.
+            pSession->recvQ.MoveRear(transferredDataLen);
+
+            //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_START_WHILE));
+            int useSize = pSession->recvQ.GetUseSize();
+            //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION((UINT32)ACTION::RECV_QUEUE_USESIZE + useSize)));
+
+            while (true)
+            {
+                // 1. RecvQ에 최소한의 사이즈가 있는지 확인. 조건은 [ 헤더 사이즈 이상의 데이터가 있는지 확인 ]하는 것.
+                int useSize = pSession->recvQ.GetUseSize();
+                if (useSize < sizeof(PACKET_HEADER))
+                {
+                    //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_EXIT_WHILE1));
+                    //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION((UINT32)ACTION::RECV_QUEUE_USESIZE + useSize)));
+                    break;
+                }
+
+
+                // 2. RecvQ에서 PACKET_HEADER 정보 Peek
+                PACKET_HEADER header;
+                int headerSize = sizeof(header);
+
+                int retVal = pSession->recvQ.Peek(reinterpret_cast<char*>(&header), headerSize);
+
+                // 3. 헤더의 len값과 RecvQ의 데이터 사이즈 비교
+                useSize = pSession->recvQ.GetUseSize();
+                if ((header.bySize + sizeof(PACKET_HEADER)) > useSize)
+                {
+                    //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_EXIT_WHILE2));
+                    //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION((UINT32)ACTION::RECV_QUEUE_USESIZE + useSize)));
+                    break;
+                }
+
+                // 4. RecvQ에서 header의 len 크기만큼 임시 패킷 버퍼를 뽑는다.
+                CPacket Packet; // 힙 매니저가 같은 공간을 계속 사용. 디버깅 해보니 지역변수지만 같은 영역을 계속 사용하고 있음.
+                int echoSendSize = header.bySize + sizeof(PACKET_HEADER);
+                int recvQDeqRetVal = pSession->recvQ.Dequeue(Packet.GetFrontBufferPtr(), echoSendSize);
+                Packet.MoveWritePos(echoSendSize);
+
+                if (recvQDeqRetVal != echoSendSize)
+                {
+                    DebugBreak();
+                }
+
+
+                // 콘텐츠 코드 OnRecv에 세션의 id와 패킷 정보를 넘겨줌
+                //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_ONRECV_START));
+
+                Packet.MoveReadPos(sizeof(PACKET_HEADER));  // len 길이에 대한 정보를 지움, netlib에서 사용하는 패킷의 길이에 대한 정보를 날림.
+                pThis->OnRecv(pSession->id, &Packet);  // 페이로드만 남은 패킷 정보를 컨텐츠에 넘김
+
+                //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_ONRECV_AFTER));
+            }
+
+            // recv 처리
+            //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_RECVPOST_START));
+            pThis->RecvPost(pSession);
+            //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_RECV_RECVPOST_AFTER));
+        }
+
+        // send 완료 통지가 온 경우
+        else if (pOverlapped == &pSession->overlappedSend) {
+            //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_COMPLETION_NOTICE));
+
+            // sendFlag를 먼저 놓고, sendQ에 보낼 데이터가 있는지 확인한다. 
+            // 다른 스레드에서 recv 완료통지를 처리할 때 sendQ에 enq 하고, sendFlag를 검사하기에
+            // 둘 중 하나는 무조건 sendFlag가 올바르게 적용된다.
+
+            // 보내는 것을 완료 했으므로 sendQ에 있는 데이터를 제거
+            pSession->sendQ.MoveFront(transferredDataLen);
+            InterlockedExchange(&pSession->sendFlag, 0);
+            //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_FLAG0));
+
+
+            // 만약 sendQ에 데이터가 있다면
+            if (pSession->sendQ.GetUseSize() != 0)
+            {
+                //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_HAS_DATA));
+
+                // send 처리
+                //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_SENDPOST_START));
+                pThis->SendPost(pSession);
+                //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_SENDPOST_AFTER));
+            }
+
+            // 만약 sendQ에 데이터가 없다면
+            else
+            {
+                // 이미 sendFlag 0으로 바꿨으니 아무것도 할 것이 없다.
+                //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_SEND_HAS_NODATA));
+            }
+        }
+
+        // 완료통지 처리 이후 IO Count 1 감소
+        IOCount = InterlockedDecrement(&pSession->IOCount);
+        //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION((UINT32)ACTION::IOCOUNT_0 + IOCount)));
+
+        //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_LEAVE_CS3));
+
+        // IO Count가 0인 경우, 모든 완료통지를 처리했으므로 세션을 삭제해도 무방.
+        if (IOCount == 0)
+        {
+            // 세션 삭제
+            //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_CALL_DELETE_SESSION2));
+            pThis->Disconnect(pSession->id);
+        }
+    }
+
+    return 0;
+}
+
+
+// SOCKADDR_IN 구조체에서 IP, PORT 값을 추출하는 함수
+void extractIPPort(const SOCKADDR_IN& clientAddr, std::string& connectedIP, UINT16& connectedPort)
+{
+    char pAddrBuf[INET_ADDRSTRLEN];
+    if (inet_ntop(AF_INET, &clientAddr, pAddrBuf, sizeof(pAddrBuf)) == NULL) {
+        std::cout << "Error : inet_ntop()\n";
+        DebugBreak();
+    }
+
+    std::string strIP{ pAddrBuf };
+
+    connectedIP = strIP;
+    connectedPort = ntohs(clientAddr.sin_port);
+}
+
+
+unsigned int __stdcall CLanServer::AcceptThread(void* pArg)
+{
+    CLanServer* pThis = (CLanServer*)pArg;
+
+    DWORD curThreadID = GetCurrentThreadId();
+
+    // 데이터 통신에 사용할 변수
+    SOCKET client_sock;
+    SOCKADDR_IN clientaddr;
+
+    int addrlen;
+
+    while (true)
+    {
+        // 백로그 큐에서 소켓 정보 추출
+        addrlen = sizeof(clientaddr);
+        client_sock = accept(pThis->listenSocket, (SOCKADDR*)&clientaddr, &addrlen);
+        if (client_sock == INVALID_SOCKET) {
+            std::cout << "accept()\n";
+            break;
+        }
+
+        // 추출한 소켓의 접속 정보에서 IP, PORT 값 추출
+        std::string connectedIP;
+        UINT16 connectedPort;
+        extractIPPort(clientaddr, connectedIP, connectedPort);
+
+
+        // 접속한 클라이언트가 현재 접속 가능한지 여부 판단
+        if (!pThis->OnConnectionRequest(connectedIP, connectedPort))
+            // 접속 불가하다면 continue
+            continue;
+
+        //==============================================================================================
+        // 세션 생성
+        //==============================================================================================
+
+        // 소켓 정보 구조체 뽑아오기
+        CSession* pSession = pThis->FetchSession(); // 뽑아오면서 ID는 이미 부여된 상태
+
+        // 세션에 소켓, IP, Port 정보 추가
+        pSession->sock = client_sock;
+        pSession->IP = connectedIP;
+        pSession->port = connectedPort;
+
+        // 세션 정보 초기화
+        pThis->InitSessionInfo(pSession);
+
+
+        // recv 처리, 왜 등록을 먼저하고, 이후에 WSARecv를 하냐면, 등록 전에 Recv 완료통지가 올 수 있음. 그래서 등록을 먼저함
+        pThis->RecvPost(pSession);
+
+
+        // 콘텐츠 accept 함수 생성 -> 에코가 아닌 진짜로 콘텐츠에서 뭔가 만들 때 등록 요망.
+        pThis->OnAccept(pSession->id);
+
+
+
+        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_AFTER_NEW));
+
+        
+        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_CONNECT_IOCP));
+
+        // 여기서 전역적인 세션 맵이나 배열에 세션을 등록
+
+        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_RECVPOST));
+
+
+       
+
+        // 이 시점에선 IO Count가 싱글 스레드나 다름 없기에 interlock없이 생으로 검사 가능.
+        if (pSession->IOCount == 0)
+        {
+            // 만약 WSARecv가 실패했다면 완료통지도 오지 않기에 여기서 바로 세션을 삭제해줘야한다.
+            pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_CALL_DELETE_SESSION3));
+
+            UINT32 id = pSession->id;
+
+            // 실제로 세션을 삭제하고
+            
+
+            // 컨텐츠에 삭제된 세션 정보를 알림
+            pThis->OnRelease(pSession->id);
+
+            pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_DELETE_SESSION));
+        }
+
+        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_EXIT));
+    }
+
+    return 0;
+}

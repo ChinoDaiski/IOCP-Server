@@ -74,6 +74,9 @@
     <ClCompile Include="CrashDump.cpp">
       <Filter>소스 파일\96. CrashDump</Filter>
     </ClCompile>
+    <ClCompile Include="IServer.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Content.h">

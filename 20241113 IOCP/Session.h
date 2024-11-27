@@ -69,7 +69,7 @@ public:
     SOCKET sock;
 
     USHORT port;
-    char IP[17];
+    std::string IP;
 
     CRingBuffer recvQ;
     CRingBuffer sendQ;
@@ -82,9 +82,6 @@ public:
     UINT32 IOCount;
 
     UINT32 sendFlag;    // 멀티스레드 환경에서 interlockedexchange 함수로 Sending중이 맞는지 확인하기 위한 flag 변수
-
-    UINT32 useFlag; // 세션 맵 lock을 해제하기 위해 우선 세션을 배열로 미리 만들어두고, bool 변수로 사용여부를 확인하는 방식으로 세션을 재활용하기로 했다.
-                    // 이를 위해 만든 변수. 초기값은 사용하지 않았으니 0, 사용하면 1로 바꾼다.
 
     // 스레드 ID, 액션 번호를 pair로 진행
     CircularQueue<std::pair<DWORD, ACTION>> debugQueue;
