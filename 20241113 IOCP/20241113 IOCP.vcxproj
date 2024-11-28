@@ -152,6 +152,7 @@
     <ClCompile Include="CircularQueue.cpp" />
     <ClCompile Include="Content.cpp" />
     <ClCompile Include="CrashDump.cpp" />
+    <ClCompile Include="IServer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Packet.cpp" />
     <ClCompile Include="pch.cpp">

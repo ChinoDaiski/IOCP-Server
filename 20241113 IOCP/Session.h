@@ -7,8 +7,10 @@ enum class ACTION : UINT32
 {
     ACTION_BEGIN = 0,
 
-    ACCEPT_AFTER_NEW = 10,
-    ACCEPT_CONNECT_IOCP,
+    ACCEPT_AFTER_FETCH = 10,
+    ACCEPT_AFTER_INIT,
+    ACCEPT_AFTER_NEW,
+    ACCEPT_ON_ACCEPT,
     ACCEPT_RECVPOST,
     ACCEPT_DELETE_SESSION,
     ACCEPT_EXIT,
@@ -19,7 +21,6 @@ enum class ACTION : UINT32
     WORKER_LEAVE_CS2,
     WORKER_LEAVE_CS3,
     WORKER_RELEASE_SESSION,
-    WORKER_DELETE_SESSION,
 
     WORKER_RECV_COMPLETION_NOTICE = 30,
     WORKER_RECV_START_WHILE,
@@ -33,7 +34,7 @@ enum class ACTION : UINT32
     WORKER_SEND_COMPLETION_NOTICE = 40,
     WORKER_SEND_FLAG0,
     WORKER_SEND_HAS_DATA,
-    WORKER_SEND_HAS_NODATA,
+    WORKER_SEND_NODATA,
     WORKER_SEND_SENDPOST_START,
     WORKER_SEND_SENDPOST_AFTER,
     
@@ -45,6 +46,9 @@ enum class ACTION : UINT32
     SERVERLIB_SENDPOST_SOMEONE_SENDING,
     SERVERLIB_SENDPOST_REAL_SEND,
     SERVERLIB_SENDPOST_SEND0,
+
+    SENDPOST_WSASEND_FAIL_NOPENDING = 60,
+    SENDPOST_WSARECV_FAIL_NOPENDING,
 
     WORKER_CALL_DELETE_SESSION1,
     WORKER_CALL_DELETE_SESSION2,
@@ -69,7 +73,7 @@ public:
     SOCKET sock;
 
     USHORT port;
-    char IP[17];
+    std::string IP;
 
     CRingBuffer recvQ;
     CRingBuffer sendQ;
@@ -79,13 +83,16 @@ public:
 
     UINT64 id;
 
-    UINT32 IOCount;
+    UINT32 IOCount = 0;
 
     UINT32 sendFlag;    // 멀티스레드 환경에서 interlockedexchange 함수로 Sending중이 맞는지 확인하기 위한 flag 변수
-
-    UINT32 useFlag; // 세션 맵 lock을 해제하기 위해 우선 세션을 배열로 미리 만들어두고, bool 변수로 사용여부를 확인하는 방식으로 세션을 재활용하기로 했다.
-                    // 이를 위해 만든 변수. 초기값은 사용하지 않았으니 0, 사용하면 1로 바꾼다.
+    
+    UINT32 isAlive;     // 살아 있는지 여부, 보통은 true이나 예외적으로 컨텐츠 쪽에서 먼저 끊을 경우 false가 되고, 이를 확인해서 IO Count가 0인 경우 삭제하도록 유도한다.
 
     // 스레드 ID, 액션 번호를 pair로 진행
     CircularQueue<std::pair<DWORD, ACTION>> debugQueue;
 };
+
+void Logging(CSession* pSession, ACTION _action);
+
+void Logging(CSession* pSession, UINT32 _action);

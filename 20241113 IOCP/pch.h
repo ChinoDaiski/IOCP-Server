@@ -18,5 +18,10 @@
 #include <Windows.h>
 #include <algorithm>
 
+#include <fstream>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
+
 #include "CrashDump.h"
 CCrashDump dump;

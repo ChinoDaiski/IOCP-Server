@@ -2,41 +2,46 @@
 
 #include "Packet.h"
 #include "IServer.h"
-#include "IContent.h"
-
-#include <stack>
 
 #define MAX_SESSION_CNT 100
 
-//class CSession;
-
-#include "Session.h"
-
-class ServerLib : public IServer
-{
+class CGameServer : public CLanServer {
 public:
-    ServerLib(void);
-    ~ServerLib(void);
+    bool Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, UINT16 maxSessionCount) override;
+    void Stop(void) override;
 
-public:
-    void RegisterIContent(IContent* _pIContent) { pIContent = _pIContent; }
+    void Release(void);
 
-public:
-    // 콘텐츠에서 보낼 것이 생겼을 때 호출되는 함수
-    virtual void SendPacket(UINT64 sessionID, CPacket* pPacket) override;
+    // 해당 값을 그냥 가져오기에 정확하지 않음. 감시용도로 대략적인 측정시 사용
+    int GetSessionCount() const override { return static_cast<int>(curSessionCnt); }
 
-public:
-    CSession* FetchSession(void);
-    void DeleteSession(CSession* _pSession);
-    void SendPost(CSession* pSession);
-    void RecvPost(CSession* pSession);
+    // 컨텐츠에서 netlib에게 세션을 종료하라고 알려주는 함수
+    bool Disconnect(UINT64 sessionID) override;
+
+    // 패킷 송신 처리
+    void SendPacket(UINT64 sessionID, CPacket* packet) override;
+
+    // 이벤트 가상 함수 기본 구현
+    bool OnConnectionRequest(const std::string& ip, int port) override;
+    void OnAccept(UINT64 sessionID) override;
+    void OnRelease(UINT64 sessionID) override;
+    void OnRecv(UINT64 sessionID, CPacket* packet) override;
+    void OnError(int errorCode, const wchar_t* errorMessage) override {}
 
 private:
-    CSession sessionArr[MAX_SESSION_CNT];
-    UINT32 g_ID;    // 세션이 접속할 때 마다 1씩 증가.
+    virtual CSession* FetchSession(void) override;
+    virtual void returnSession(CSession* pSession) override;
+    virtual void InitSessionInfo(CSession* pSession) override;
 
-    CircularQueue<std::pair<UINT64, UINT16>> debugSessionIndexQueue;
 
 private:
-    IContent* pIContent;
+    void loadIPList(const std::string& filePath, std::unordered_set<std::string>& IPList);
+
+    std::unordered_set<std::string> allowedIPs; // 허용할 IP 목록
+    std::unordered_set<std::string> blockedIPs; // 차단할 IP 목록
+    
+
+
+    // 서버 정검모드인지 확인하는 변수
+    bool isServerMaintrenanceMode = false;
 };
