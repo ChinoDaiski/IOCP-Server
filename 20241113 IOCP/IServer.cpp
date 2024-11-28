@@ -6,6 +6,9 @@
 
 void CLanServer::RecvPost(CSession* pSession)
 {
+    // recvMessageTPS 1 증가
+    InterlockedIncrement(&recvMessageTPS);
+
     int retVal;
     int error;
 
@@ -37,6 +40,7 @@ void CLanServer::RecvPost(CSession* pSession)
     }
 }
 
+// sendQ에 데이터를 넣고, WSASend를 호출
 void CLanServer::SendPost(CSession* pSession)
 {
     DWORD curThreadID = GetCurrentThreadId();
@@ -49,6 +53,9 @@ void CLanServer::SendPost(CSession* pSession)
         // 넘어감
         return;
     }
+
+    // sendMessageTPS 1 증가
+    InterlockedIncrement(&sendMessageTPS);
 
     int retval;
     int error;
@@ -266,7 +273,7 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
         {
             // 세션 삭제
             //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_CALL_DELETE_SESSION2));
-            pThis->Disconnect(pSession->id);
+            pThis->returnSession(pSession);
         }
     }
 
@@ -312,6 +319,12 @@ unsigned int __stdcall CLanServer::AcceptThread(void* pArg)
             break;
         }
 
+
+        // AcceptTps 1 증가
+        InterlockedIncrement(&pThis->acceptTPS);
+
+
+
         // 추출한 소켓의 접속 정보에서 IP, PORT 값 추출
         std::string connectedIP;
         UINT16 connectedPort;
@@ -339,6 +352,10 @@ unsigned int __stdcall CLanServer::AcceptThread(void* pArg)
         pThis->InitSessionInfo(pSession);
 
 
+        // 소켓과 입출력 완료 포트 연결 - 새로 연견될 소켓을 key를 해당 소켓과 연결된 세션 구조체의 포인터로 하여 IOCP와 연결한다.
+        CreateIoCompletionPort((HANDLE)pSession->sock, pThis->hIOCP, (ULONG_PTR)pSession, 0);
+
+
         // recv 처리, 왜 등록을 먼저하고, 이후에 WSARecv를 하냐면, 등록 전에 Recv 완료통지가 올 수 있음. 그래서 등록을 먼저함
         pThis->RecvPost(pSession);
 
@@ -348,14 +365,13 @@ unsigned int __stdcall CLanServer::AcceptThread(void* pArg)
 
 
 
-        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_AFTER_NEW));
+        //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_AFTER_NEW));
 
         
-        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_CONNECT_IOCP));
+        //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_CONNECT_IOCP));
 
-        // 여기서 전역적인 세션 맵이나 배열에 세션을 등록
 
-        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_RECVPOST));
+        //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_RECVPOST));
 
 
        
@@ -364,21 +380,23 @@ unsigned int __stdcall CLanServer::AcceptThread(void* pArg)
         if (pSession->IOCount == 0)
         {
             // 만약 WSARecv가 실패했다면 완료통지도 오지 않기에 여기서 바로 세션을 삭제해줘야한다.
-            pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_CALL_DELETE_SESSION3));
+            //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::WORKER_CALL_DELETE_SESSION3));
 
-            UINT32 id = pSession->id;
+            // 세션을 삭제, 컨텐츠에 삭제된 세션 정보를 알림
+            pThis->returnSession(pSession);
 
-            // 실제로 세션을 삭제하고
-            
-
-            // 컨텐츠에 삭제된 세션 정보를 알림
-            pThis->OnRelease(pSession->id);
-
-            pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_DELETE_SESSION));
+            //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_DELETE_SESSION));
         }
 
-        pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_EXIT));
+        //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::ACCEPT_EXIT));
     }
 
     return 0;
+}
+
+void CLanServer::ClearTPSValue(void)
+{
+    InterlockedExchange(&acceptTPS, 0);
+    InterlockedExchange(&recvMessageTPS, 0);
+    InterlockedExchange(&sendMessageTPS, 0);
 }
