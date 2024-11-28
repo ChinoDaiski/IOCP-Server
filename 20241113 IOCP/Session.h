@@ -7,8 +7,10 @@ enum class ACTION : UINT32
 {
     ACTION_BEGIN = 0,
 
-    ACCEPT_AFTER_NEW = 10,
-    ACCEPT_CONNECT_IOCP,
+    ACCEPT_AFTER_FETCH = 10,
+    ACCEPT_AFTER_INIT,
+    ACCEPT_AFTER_NEW,
+    ACCEPT_ON_ACCEPT,
     ACCEPT_RECVPOST,
     ACCEPT_DELETE_SESSION,
     ACCEPT_EXIT,
@@ -19,7 +21,6 @@ enum class ACTION : UINT32
     WORKER_LEAVE_CS2,
     WORKER_LEAVE_CS3,
     WORKER_RELEASE_SESSION,
-    WORKER_DELETE_SESSION,
 
     WORKER_RECV_COMPLETION_NOTICE = 30,
     WORKER_RECV_START_WHILE,
@@ -33,7 +34,7 @@ enum class ACTION : UINT32
     WORKER_SEND_COMPLETION_NOTICE = 40,
     WORKER_SEND_FLAG0,
     WORKER_SEND_HAS_DATA,
-    WORKER_SEND_HAS_NODATA,
+    WORKER_SEND_NODATA,
     WORKER_SEND_SENDPOST_START,
     WORKER_SEND_SENDPOST_AFTER,
     
@@ -45,6 +46,9 @@ enum class ACTION : UINT32
     SERVERLIB_SENDPOST_SOMEONE_SENDING,
     SERVERLIB_SENDPOST_REAL_SEND,
     SERVERLIB_SENDPOST_SEND0,
+
+    SENDPOST_WSASEND_FAIL_NOPENDING = 60,
+    SENDPOST_WSARECV_FAIL_NOPENDING,
 
     WORKER_CALL_DELETE_SESSION1,
     WORKER_CALL_DELETE_SESSION2,
@@ -79,7 +83,7 @@ public:
 
     UINT64 id;
 
-    UINT32 IOCount;
+    UINT32 IOCount = 0;
 
     UINT32 sendFlag;    // 멀티스레드 환경에서 interlockedexchange 함수로 Sending중이 맞는지 확인하기 위한 flag 변수
     
@@ -88,3 +92,7 @@ public:
     // 스레드 ID, 액션 번호를 pair로 진행
     CircularQueue<std::pair<DWORD, ACTION>> debugQueue;
 };
+
+void Logging(CSession* pSession, ACTION _action);
+
+void Logging(CSession* pSession, UINT32 _action);

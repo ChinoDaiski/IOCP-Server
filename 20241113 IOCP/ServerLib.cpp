@@ -183,8 +183,6 @@ void CGameServer::SendPacket(UINT64 sessionID, CPacket* pPacket)
     // 세션을 찾았다면
     if (pSession->id == sessionID)
     {
-        //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_FIND));
-
         // 패킷 선언
         CPacket packet;
 
@@ -198,8 +196,6 @@ void CGameServer::SendPacket(UINT64 sessionID, CPacket* pPacket)
 
         // sendQ에 넣음
         pSession->sendQ.Enqueue(packet.GetFrontBufferPtr(), packet.GetDataSize());
-
-        //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_ENQ));
     }
     // 아니라면 재활용되면서 이상한 값이 나올 수 있다.
     else
@@ -207,11 +203,7 @@ void CGameServer::SendPacket(UINT64 sessionID, CPacket* pPacket)
         DebugBreak();
     }
 
-    //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_START_SENDPOST));
-
     SendPost(pSession);
-
-    //pSession->debugQueue.enqueue(std::make_pair(curThreadID, ACTION::SENDPACKET_AFTER_SENDPOST));
 }
 
 // 세션이 만들어지기 전에 허락을 받는 함수. 서버 테스트나 점검 등이 필요할 때 사내 IP만 접속할 수 있도록 인원을 제한하는 방식.
@@ -306,11 +298,11 @@ CSession* CGameServer::FetchSession(void)
 
 void CGameServer::returnSession(CSession* pSession)
 {
+    EnterCriticalSection(&cs_sessionID);
+
     // 소켓 close
     closesocket(pSession->sock);
     pSession->sock = INVALID_SOCKET;
-
-    EnterCriticalSection(&cs_sessionID);
 
     // 인자로 받은 세션이 위치한 배열 인덱스를 반환
     stSessionIndex.push(static_cast<UINT16>(pSession->id));
@@ -320,6 +312,7 @@ void CGameServer::returnSession(CSession* pSession)
     // 세션접속 수 1 감소
     InterlockedDecrement(&curSessionCnt);
 
+    // 연결이 끊어진 수 1 증가
     InterlockedIncrement(&disconnectedSessionCnt);
 
     // 세션을 삭제했으니 이후에 콘텐츠에게 세션이 삭제되었음을 알리는 코드가 들어감
@@ -333,7 +326,11 @@ void CGameServer::InitSessionInfo(CSession* pSession)
     ZeroMemory(&pSession->overlappedSend, sizeof(pSession->overlappedSend));
 
     // 삭제를 위한 IO Count 부여, 초기화 할 시기로 아직 등록도 전이니 0으로 설정
-    pSession->IOCount = 0;
+    UINT32 IOCount = InterlockedExchange(&pSession->IOCount, 0);
+    Logging(pSession, (UINT32)ACTION::IOCOUNT_0 + IOCount);
+
+    if (IOCount != 0)
+        DebugBreak();
 
     // send를 1회 제한하기 위한 flag 변수
     pSession->sendFlag = 0;

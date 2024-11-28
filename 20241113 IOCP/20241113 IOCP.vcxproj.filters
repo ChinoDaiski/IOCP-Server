@@ -75,7 +75,7 @@
       <Filter>소스 파일\96. CrashDump</Filter>
     </ClCompile>
     <ClCompile Include="IServer.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\03. ServerLib\Interface</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
