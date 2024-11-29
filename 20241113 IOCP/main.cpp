@@ -24,8 +24,10 @@ unsigned int WINAPI MonitorThread(void* pArg);
 
 int main(void)
 {
+    timeBeginPeriod(1);
+
     CGameServer GameServer;
-    GameServer.Start(htonl(INADDR_ANY), SERVERPORT, 6, 3, true, 20000);
+    GameServer.Start(htonl(INADDR_ANY), SERVERPORT, 8, 4, true, 20000);
 
     // IP 입력시 inet_addr(ip); <- 원하는 IP를 문자열로 또는 htonl(INADDR_ANY)를 호출해서 모든 NIC으로부터 데이터를 받을 수 도 있다.
 

@@ -16,6 +16,8 @@
 #endif
 
 #include <Windows.h>
+#pragma comment(lib, "Winmm.lib")	// timeBeginPeriod 사용을 위해 추가
+
 #include <algorithm>
 
 #include <fstream>

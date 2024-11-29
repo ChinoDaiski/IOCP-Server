@@ -169,9 +169,15 @@ public:
 	int		PutData(char* chpSrc, int iSrcSize);
 
 
+
+	UINT16 AddRef(void);
+	UINT16 ReleaseRef(void);
+
+
 protected:
 	char* m_chpBuffer;      // 데이터 저장 배열
 	int m_iBufferSize;      // 버퍼의 전체 용량
 	int m_iFront;           // 현재 읽기 위치 (front)
 	int m_iRear;            // 현재 쓰기 위치 (rear)
+	UINT16 m_refCount;		// 레퍼런스 카운터
 };

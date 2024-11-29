@@ -70,3 +70,27 @@ private:
     UINT32 capacity{ 0 };                // 버퍼 크기
 };
 
+
+class CPacket;
+
+#define PACKET_QUEUE_SIZE 100
+
+class CPacketQueue
+{
+public:
+    explicit CPacketQueue(void);
+    ~CPacketQueue();
+
+public:
+    void Enqueue(CPacket* pPacket);
+
+    // 반환값으로 만들어진 WSABUF 갯수를 반환.
+    int makeWSASendBuf(LPWSABUF wsaBuf);
+    int makeWSARecvBuf(LPWSABUF wsaBuf);
+
+private:
+    CPacket* pPackets[PACKET_QUEUE_SIZE];   // 큐 본체. 일단 100개를 사용. 아마 100개를 한번에 넘게 보관하는 경우가 없을테지만, 이건 실제 측정해보면서 최대값을 측정하여 사용
+    UINT32 readPos{ 0 };                    // 읽기 위치
+    UINT32 writePos{ -1 };                  // 쓰기 위치
+    UINT32 capacity{ PACKET_QUEUE_SIZE };   // 버퍼 크기
+};

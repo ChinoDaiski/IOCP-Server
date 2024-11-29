@@ -2,6 +2,8 @@
 #include "pch.h"
 #include "RingBuffer.h"
 
+#include "Packet.h"
+
 CRingBuffer::CRingBuffer(UINT64 iBufferSize)
 {
     Resize(iBufferSize);
@@ -208,3 +210,68 @@ int CRingBuffer::makeWSARecvBuf(LPWSABUF wsaBuf)
         return 2;
     }
 }
+//
+//
+//CPacketQueue::CPacketQueue(void)
+//    : size{ -1 }
+//{
+//}
+//
+//CPacketQueue::~CPacketQueue()
+//{
+//}
+//
+//void CPacketQueue::Enqueue(CPacket* pPacket)
+//{
+//    pPackets[writePos] = pPacket;
+//    writePos += 1;
+//    writePos %= PACKET_QUEUE_SIZE;
+//}
+//
+//int CPacketQueue::makeWSASendBuf(LPWSABUF wsaBuf)
+//{
+//    // r ... w 일 경우
+//    if (readPos <= writePos)
+//    {
+//        for (int i = readPos; i < writePos; ++i)
+//        {
+//            wsaBuf[i - readPos].buf = pPackets[i]->GetFrontBufferPtr();
+//            wsaBuf[i - readPos].len = pPackets[i]->GetDataSize();
+//        }
+//
+//        return writePos - readPos;
+//    }
+//    
+//    // w ... r 일 경우
+//    else
+//    {
+//        for (int i = readPos; i < capacity; ++i)
+//        {
+//            wsaBuf[i - readPos].buf = pPackets[i]->GetFrontBufferPtr();
+//            wsaBuf[i - readPos].len = pPackets[i]->GetDataSize();
+//        }
+//
+//
+//        for (int i = 0; i < writePos; ++i)
+//        {
+//            wsaBuf[i + readPos].buf = pPackets[i]->GetFrontBufferPtr();
+//            wsaBuf[i + readPos].len = pPackets[i]->GetDataSize();
+//        }
+//
+//        return capacity - readPos + writePos;
+//    }
+//
+//    if (w == 0)
+//    {
+//        useSize -= 1;
+//    }
+//
+//    // 쓰기 위치 업데이트 
+//    MoveRear(iSize);
+//    return iSize;
+//}
+//
+//int CPacketQueue::makeWSARecvBuf(LPWSABUF wsaBuf)
+//{
+//    return 0;
+//}

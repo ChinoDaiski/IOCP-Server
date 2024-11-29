@@ -10,6 +10,8 @@ CPacket::CPacket(int iBufferSize)
 
 	m_chpBuffer = new char[m_iBufferSize];
 	ZeroMemory(m_chpBuffer, m_iBufferSize);
+
+	m_refCount = 0;
 }
 
 CPacket::~CPacket()
@@ -70,4 +72,14 @@ int CPacket::PutData(char* chpSrc, int iSrcSize)
 	MoveWritePos(iSrcSize);
 
 	return 0;
+}
+
+UINT16 CPacket::AddRef(void)
+{
+	return InterlockedIncrement16(&m_refCount);
+}
+
+UINT16 CPacket::ReleaseRef(void)
+{
+	return InterlockedDecrement16(&m_refCount);
 }
