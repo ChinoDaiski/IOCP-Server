@@ -86,7 +86,7 @@ unsigned int WINAPI MonitorThread(void* pArg)
 
         std::cout << "Current SessionCount : " << pThis->GetSessionCount() << "\n";
         std::cout << "Disconnected SessionCount : " << pThis->GetDisconnectedSessionCnt() << "\n";
-
+        std::cout << "Packet Use Count : " << CPacket::usePacketCnt << "\n";
 
         std::cout << "===================================\n\n";
         // value ÃÊ±âÈ­

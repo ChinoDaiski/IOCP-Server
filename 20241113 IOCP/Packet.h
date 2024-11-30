@@ -180,4 +180,8 @@ protected:
 	int m_iFront;           // 현재 읽기 위치 (front)
 	int m_iRear;            // 현재 쓰기 위치 (rear)
 	short m_refCount;		// 레퍼런스 카운터
+
+
+public:
+	static UINT32 usePacketCnt;
 };

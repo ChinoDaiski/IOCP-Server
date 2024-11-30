@@ -300,6 +300,9 @@ void CGameServer::returnSession(CSession* pSession)
 {
     EnterCriticalSection(&cs_sessionID);
 
+    // sendQ에 아직 처리되지 못한 패킷들 정리
+    pSession->sendQ.ClearQueue();
+
     // 소켓 close
     closesocket(pSession->sock);
     pSession->sock = INVALID_SOCKET;

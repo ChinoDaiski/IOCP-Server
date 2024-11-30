@@ -228,10 +228,12 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 }
 
                 // 4. RecvQ에서 header의 len 크기만큼 임시 패킷 버퍼를 뽑는다.
-                CPacket Packet; // 힙 매니저가 같은 공간을 계속 사용. 디버깅 해보니 지역변수지만 같은 영역을 계속 사용하고 있음.
+                CPacket* Packet = new CPacket; // 힙 매니저가 같은 공간을 계속 사용. 디버깅 해보니 지역변수지만 같은 영역을 계속 사용하고 있음.
+                Packet->AddRef();
+
                 int echoSendSize = header.bySize + sizeof(PACKET_HEADER);
-                int recvQDeqRetVal = pSession->recvQ.Dequeue(Packet.GetFrontBufferPtr(), echoSendSize);
-                Packet.MoveWritePos(echoSendSize);
+                int recvQDeqRetVal = pSession->recvQ.Dequeue(Packet->GetFrontBufferPtr(), echoSendSize);
+                Packet->MoveWritePos(echoSendSize);
 
                 if (recvQDeqRetVal != echoSendSize)
                 {
@@ -239,10 +241,18 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 }
 
                 // 콘텐츠 코드 OnRecv에 세션의 id와 패킷 정보를 넘겨줌
-                Packet.MoveReadPos(sizeof(PACKET_HEADER));  // len 길이에 대한 정보를 지움, netlib에서 사용하는 패킷의 길이에 대한 정보를 날림.
+                Packet->MoveReadPos(sizeof(PACKET_HEADER));  // len 길이에 대한 정보를 지움, netlib에서 사용하는 패킷의 길이에 대한 정보를 날림.
                 Logging(pSession, ACTION::WORKER_RECV_ONRECV_START);
-                pThis->OnRecv(pSession->id, &Packet);  // 페이로드만 남은 패킷 정보를 컨텐츠에 넘김
+                pThis->OnRecv(pSession->id, Packet);  // 페이로드만 남은 패킷 정보를 컨텐츠에 넘김
                 Logging(pSession, ACTION::WORKER_RECV_ONRECV_AFTER);
+
+
+                // 패킷의 release 함수를 호출해서 refCounter를 1줄이고, 줄여진 값이 0인 것을 확인
+                if (Packet->ReleaseRef() == 0)
+                {
+                    // 0이라면 패킷을 제거
+                    delete Packet;
+                }
             }
 
             // recv 처리

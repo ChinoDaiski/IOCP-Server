@@ -298,6 +298,8 @@ void CPacketQueue::Enqueue(CPacket* pPacket)
 
     // 0에서 시작
     pPackets[writePos] = pPacket;
+
+    pPacket->AddRef();
     
     // writePos 위치를 1 증가
     writePos += 1;
@@ -313,8 +315,10 @@ void CPacketQueue::Dequeue(void)
 
     // 패킷의 release 함수를 호출해서 refCounter를 1줄이고, 줄여진 값이 0인 것을 확인
     if (pPacket->ReleaseRef() == 0)
+    {
         // 0이라면 패킷을 제거
         delete pPacket;
+    }
 
     // readPos 위치를 1 증가
     readPos += 1;
@@ -330,6 +334,12 @@ CPacket* CPacketQueue::GetFront(void)
 
 void CPacketQueue::ClearQueue(void)
 {
+    // 가지고 있던 사용하지 않는 패킷들 삭제
+    while (!empty())
+    {
+        Dequeue();
+    }
+
     writePos = readPos = 0;
     sendCompleteDataSize = 0;
 }
