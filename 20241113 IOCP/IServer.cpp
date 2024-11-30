@@ -355,8 +355,9 @@ unsigned int __stdcall CLanServer::AcceptThread(void* pArg)
         addrlen = sizeof(clientaddr);
         client_sock = accept(pThis->listenSocket, (SOCKADDR*)&clientaddr, &addrlen);
         if (client_sock == INVALID_SOCKET) {
-            std::cout << "accept()\n";
-            break;
+            int error = WSAGetLastError();
+            std::cout << "Error : accept failed - " << error << "\n";
+            DebugBreak();
         }
 
 

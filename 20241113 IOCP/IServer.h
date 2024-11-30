@@ -12,7 +12,7 @@ public:
 
     // 서버 시작/종료
     virtual bool Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount,
-        bool nagleOption, UINT16 maxSessionCount) = 0;
+        bool nagleOption, int maxSessionCount) = 0;
     virtual void Stop() = 0;
 
     // 세션 관리

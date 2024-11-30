@@ -5,12 +5,21 @@
 
 #define MAX_SESSION_CNT 100
 
+#define OPTION_NONBLOCKING      0x01
+#define OPTION_DISABLE_NAGLE    0x02
+#define OPTION_ENABLE_RST       0x04
+
+enum class PROTOCOL_TYPE
+{
+    TCP_IP,
+    UDP,
+    END
+};
+
 class CGameServer : public CLanServer {
 public:
-    bool Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, UINT16 maxSessionCount) override;
+    bool Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, int maxSessionCount) override;
     void Stop(void) override;
-
-    void Release(void);
 
     // 해당 값을 그냥 가져오기에 정확하지 않음. 감시용도로 대략적인 측정시 사용
     int GetSessionCount() const override { return static_cast<int>(curSessionCnt); }
@@ -27,6 +36,28 @@ public:
     void OnRelease(UINT64 sessionID) override;
     void OnRecv(UINT64 sessionID, CPacket* packet) override;
     void OnError(int errorCode, const wchar_t* errorMessage) override {}
+
+
+
+private:
+    void InitWinSock(void) noexcept;
+    void CreateListenSocket(PROTOCOL_TYPE type);
+    void CreateIOCP(int runningThreadCount);
+    void Bind(unsigned long ip, UINT16 port);
+    void SetOptions(bool bNagleOn);
+    void Listen(int somaxconn);
+
+private:
+    void InitResource(int maxSessionCount);
+    void ReleaseResource(void);
+
+    void CreateThreadPool(int workerThreadCount);
+
+private:
+    void SetTCPSendBufSize(SOCKET socket, UINT32 size);
+    void SetNonBlockingMode(SOCKET socket, bool bNonBlocking);
+    void DisableNagleAlgorithm(SOCKET socket, bool bNagleOn);
+    void EnableRSTOnClose(SOCKET socket);
 
 private:
     virtual CSession* FetchSession(void) override;
