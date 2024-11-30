@@ -11,7 +11,11 @@ CPacket::CPacket(int iBufferSize)
 	m_chpBuffer = new char[m_iBufferSize];
 	ZeroMemory(m_chpBuffer, m_iBufferSize);
 
-	m_refCount = 0;
+	m_refCount = 0; 
+	
+	// 지금은 처음 생성하자마자 사용하니깐 refcount를 1 증가시킨다.
+	// 나중엔 메모리 풀을 사용해서 가져올 때 가져가는 측에서 AddRef를 호출할 것.
+	AddRef();
 }
 
 CPacket::~CPacket()

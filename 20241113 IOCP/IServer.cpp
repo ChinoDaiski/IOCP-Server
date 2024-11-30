@@ -73,7 +73,7 @@ void CLanServer::SendPost(CSession* pSession)
     int retval;
     int error;
 
-    WSABUF sendBuf[2];
+    WSABUF sendBuf[MAX_PACKET_QUEUE_SIZE];
     int bufCnt = pSession->sendQ.makeWSASendBuf(sendBuf);
 
     // A 스레드가 사이즈를 확인하고 아직 interlock을 호출하지 않은 상황에서, 컨텍스트 스위칭. 
@@ -253,17 +253,26 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
 
         // send 완료 통지가 온 경우
         else if (pOverlapped == &pSession->overlappedSend) {
-
+            
             // 보내는 것을 완료 했으므로 sendQ에 있는 데이터를 제거
-            pSession->sendQ.MoveFront(transferredDataLen);
+
+            // 인자로 받은 데이터의 크기를 보고 안에 있는 패킷을 pop.
+            pSession->sendQ.RemoveSendCompletePacket(transferredDataLen);
+
+            //// 이 시점에서 read, writepos 기록
+            //Logging(pSession, (UINT32)ACTION::SEND_QUEUE_SENDQ_WRITEPOS + pSession->sendQ.GetWritePos());
+            //Logging(pSession, (UINT32)ACTION::SEND_QUEUE_SENDQ_READPOS + pSession->sendQ.GetReadPos());
+
 
             // sendFlag를 먼저 놓고, sendQ에 보낼 데이터가 있는지 확인한다. 
             // 다른 스레드에서 recv 완료통지를 처리할 때 sendQ에 enq 하고, sendFlag를 검사하기에
             // 둘 중 하나는 무조건 sendFlag가 올바르게 적용된다.
             InterlockedExchange(&pSession->sendFlag, 0);
 
+            
+
             // 만약 sendQ에 데이터가 있다면
-            if (pSession->sendQ.GetUseSize() != 0)
+            if (!pSession->sendQ.empty())
             {
                 // send 처리
                 Logging(pSession, ACTION::WORKER_SEND_HAS_DATA);
@@ -279,6 +288,10 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 // 이미 sendFlag 0으로 바꿨으니 아무것도 할 것이 없다.
                 ;
             }
+
+            //// 이 시점에서 read, writepos 기록
+            //Logging(pSession, (UINT32)ACTION::SEND_QUEUE_SENDQ_WRITEPOS + pSession->sendQ.GetWritePos());
+            //Logging(pSession, (UINT32)ACTION::SEND_QUEUE_SENDQ_READPOS + pSession->sendQ.GetReadPos());
         }
 
         // 완료통지 처리 이후 IO Count 1 감소

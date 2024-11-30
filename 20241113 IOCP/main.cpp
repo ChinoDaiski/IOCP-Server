@@ -56,21 +56,6 @@ int main(void)
             PostQueuedCompletionStatus(g_hIOCP, 0, 0, NULL);
             break;
         }
-
-        if (ControlKey == L'w' || ControlKey == L'W')
-        {
-            //------------------------------------------------
-            // 세션하나 선택해서 WSASend로 send 0을 했을 때 완료통지가 오는지 확인
-            //------------------------------------------------
-            auto iter = g_clients.find(0);
-            WSABUF wsaBuf;
-            wsaBuf.buf = iter->second->sendQ.GetFrontBufferPtr();
-            wsaBuf.len = 0;
-
-            DWORD flags{};
-            WSASend(iter->second->sock, &wsaBuf, 1, NULL, flags, &iter->second->overlappedSend, NULL);
-            break;
-        }
     }
 
     GameServer.Stop();

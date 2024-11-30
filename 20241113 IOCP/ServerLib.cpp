@@ -183,19 +183,19 @@ void CGameServer::SendPacket(UINT64 sessionID, CPacket* pPacket)
     // 세션을 찾았다면
     if (pSession->id == sessionID)
     {
-        // 패킷 선언
-        CPacket packet;
+        // 패킷 할당
+        CPacket* pSendPacket = new CPacket;
 
         // 헤더 정보 삽입
         PACKET_HEADER header;
         header.bySize = pPacket->GetDataSize();
-        packet.PutData((char*)&header, sizeof(PACKET_HEADER));
+        pSendPacket->PutData((char*)&header, sizeof(PACKET_HEADER));
 
         // 인자로 받은 패킷의 데이터 삽입
-        packet.PutData(pPacket->GetFrontBufferPtr(), pPacket->GetDataSize());
+        pSendPacket->PutData(pPacket->GetFrontBufferPtr(), pPacket->GetDataSize());
 
-        // sendQ에 넣음
-        pSession->sendQ.Enqueue(packet.GetFrontBufferPtr(), packet.GetDataSize());
+        // sendQ에 직렬화 버퍼 자체를 넣음
+        pSession->sendQ.Enqueue(pSendPacket);
     }
     // 아니라면 재활용되면서 이상한 값이 나올 수 있다.
     else
@@ -336,7 +336,7 @@ void CGameServer::InitSessionInfo(CSession* pSession)
     pSession->sendFlag = 0;
 
     // 링버퍼 초기화
-    pSession->sendQ.ClearBuffer();
+    pSession->sendQ.ClearQueue();
     pSession->recvQ.ClearBuffer(); 
     
     // 해당 세션이 살아있는지 여부, 첫 값은 TRUE로 컨텐츠 쪽에서 끊었을 경우에만 0으로 변경한다.

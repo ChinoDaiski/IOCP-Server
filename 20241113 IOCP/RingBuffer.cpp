@@ -275,3 +275,141 @@ int CRingBuffer::makeWSARecvBuf(LPWSABUF wsaBuf)
 //{
 //    return 0;
 //}
+
+CPacketQueue::CPacketQueue(void)
+{
+    ZeroMemory(pPackets, sizeof(CPacket*) * MAX_PACKET_QUEUE_SIZE);
+}
+
+CPacketQueue::~CPacketQueue()
+{
+}
+
+void CPacketQueue::Enqueue(CPacket* pPacket)
+{
+    UINT32 w = writePos;
+    UINT32 r = readPos;
+
+    // enq할때 이 세션이 이미 문제가 있는 세션일 수 있으니깐 한바퀴를 다 돌지 않았는지 검사해야한다.
+    if (isFull(r, w))
+    {
+        DebugBreak();
+    }
+
+    // 0에서 시작
+    pPackets[writePos] = pPacket;
+    
+    // writePos 위치를 1 증가
+    writePos += 1;
+
+    // 원형이기에 % 연산이 들어감
+    writePos %= capacity;
+}
+
+void CPacketQueue::Dequeue(void)
+{
+    // 현재 제거할 패킷을 가져옴
+    CPacket* pPacket = pPackets[readPos];
+
+    // 패킷의 release 함수를 호출해서 refCounter를 1줄이고, 줄여진 값이 0인 것을 확인
+    if (pPacket->ReleaseRef() == 0)
+        // 0이라면 패킷을 제거
+        delete pPacket;
+
+    // readPos 위치를 1 증가
+    readPos += 1;
+
+    // 원형이기에 % 연산이 들어감
+    readPos %= capacity;
+}
+
+CPacket* CPacketQueue::GetFront(void)
+{
+    return pPackets[readPos];
+}
+
+void CPacketQueue::ClearQueue(void)
+{
+    writePos = readPos = 0;
+    sendCompleteDataSize = 0;
+}
+
+bool CPacketQueue::empty(void)
+{
+    UINT32 w = writePos;
+    UINT32 r = readPos;
+
+    return isEmpty(r, w);
+}
+
+int CPacketQueue::makeWSASendBuf(LPWSABUF wsaBuf)
+{
+    UINT32 w = writePos;
+    UINT32 r = readPos;
+
+    // r ... w 이렇게 있을 때
+    if (w >= r)
+    {
+        for (int i = r; i < w; ++i)
+        {
+            wsaBuf[i - r].buf = pPackets[i]->GetFrontBufferPtr();
+            wsaBuf[i - r].len = pPackets[i]->GetDataSize();
+        }
+
+        return w - r;
+    }
+    // w ... r 이렇게 있을 때
+    else
+    {
+        // r ~ capacity까지
+
+        for (int i = r; i < capacity; ++i)
+        {
+            wsaBuf[i - r].buf = pPackets[i]->GetFrontBufferPtr();
+            wsaBuf[i - r].len = pPackets[i]->GetDataSize();
+        }
+
+        int size = capacity - r;
+
+        for (int i = 0; i < w; ++i)
+        {
+            wsaBuf[size + i].buf = pPackets[i]->GetFrontBufferPtr();
+            wsaBuf[size + i].len = pPackets[i]->GetDataSize();
+        }
+
+        return size + w;
+    }
+}
+
+void CPacketQueue::RemoveSendCompletePacket(UINT32 completeSendSize)
+{
+    sendCompleteDataSize += completeSendSize;
+
+    UINT32 w = writePos;
+    UINT32 r = readPos;
+
+    while (true)
+    {
+        int packetDataSize = pPackets[r]->GetDataSize();
+
+        // [ front에 있는 패킷의 데이터 크기 ]보다 [ 전송 완료된 데이터의 용량 ]이 더 크다면
+        if (packetDataSize <= sendCompleteDataSize)
+        {
+            // deq
+            Dequeue();
+
+            r += 1;
+            r %= capacity;
+
+            // deq 된 패킷의 데이터 용량만큼 전송 완료된 데이터 용량에서 제거
+            sendCompleteDataSize -= packetDataSize;
+
+            if (sendCompleteDataSize == 0)
+            {
+                break;
+            }
+        }
+        else
+            break;
+    }
+}

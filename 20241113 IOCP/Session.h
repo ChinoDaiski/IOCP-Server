@@ -60,6 +60,11 @@ enum class ACTION : UINT32
     IOCOUNT_0 = 100,
 
     RECV_QUEUE_USESIZE = 200,
+
+    SEND_QUEUE_SENDQ_READPOS = 300,
+    SEND_QUEUE_SENDQ_WRITEPOS = 400,
+
+    SEND_QUEUE_SENDCOMPELETE_SIZE = 1000,
 };
 
 // 소켓 정보 저장을 위한 구조체
@@ -76,7 +81,7 @@ public:
     std::string IP;
 
     CRingBuffer recvQ;
-    CRingBuffer sendQ;
+    CPacketQueue sendQ;
 
     OVERLAPPED overlappedRecv;
     OVERLAPPED overlappedSend;
