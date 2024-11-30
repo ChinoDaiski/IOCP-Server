@@ -3,6 +3,8 @@
 #include "Packet.h"
 #include <iostream>
 
+UINT32 CPacket::usePacketCnt = 0;
+
 CPacket::CPacket(int iBufferSize)
 {
 	m_iBufferSize = iBufferSize;
@@ -12,6 +14,8 @@ CPacket::CPacket(int iBufferSize)
 	ZeroMemory(m_chpBuffer, m_iBufferSize);
 
 	m_refCount = 0;
+
+	InterlockedIncrement(&usePacketCnt);
 }
 
 CPacket::~CPacket()
@@ -19,6 +23,7 @@ CPacket::~CPacket()
 	Clear();
 
 	delete m_chpBuffer;
+	InterlockedDecrement(&usePacketCnt);
 }
 
 void CPacket::Clear(void)

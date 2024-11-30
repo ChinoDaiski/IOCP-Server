@@ -7,112 +7,45 @@
 #include "Session.h"
 #include "Protocol.h"
 
-bool CGameServer::Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, UINT16 maxSessionCount)
+bool CGameServer::Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, int maxSessionCount)
 {
     //=================================================================================================================
     // 1. 서버 소켓 초기화 및 IOCP 연결
     //=================================================================================================================
 
-    int retval;
+    // winSock 초기화
+    InitWinSock();
 
-    // 윈속 초기화
-    WSADATA wsa;
-    if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0) return 1;
+    // listenSocket 생성
+    CreateListenSocket(PROTOCOL_TYPE::TCP_IP);
 
-    // CPU 개수 확인
-    SYSTEM_INFO si;
-    GetSystemInfo(&si);
-    // int ProcessorNum = si.dwNumberOfProcessors;
-    // 프로세서 갯수 미만으로 IOCP Running 스레드의 갯수를 제한하면서 테스트 해볼 것.
-
-    // 입출력 완료 포트 생성
-    hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, runningThreadCount);
-    if (hIOCP == NULL)
-    {
-        std::cerr << "INVALID_HANDLE : hIOCP\n";
-        return false;
-    }
-
-    // socket()
-    listenSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (listenSocket == INVALID_SOCKET)
-    {
-        std::cerr << "INVALID_SOCKET : listen_sock\n";
-        return false;
-    }
-
-
-    // sendbuf 크기 설정 (송신 버퍼의 크기를 0으로 설정해 중간 단계 버퍼링 없이 메모리에 직접 direct I/O를 유도)
-    int recvBufSize = 0;
-    if (setsockopt(listenSocket, SOL_SOCKET, SO_SNDBUF, (const char*)&recvBufSize, sizeof(recvBufSize)) == SOCKET_ERROR) {
-        std::cerr << "setsockopt failed with error: " << WSAGetLastError() << std::endl;
-        closesocket(listenSocket);
-        listenSocket = INVALID_SOCKET;
-        WSACleanup();
-        return false;
-    }
-
-
-    // bind()
-    SOCKADDR_IN serveraddr;
-    ZeroMemory(&serveraddr, sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_addr.s_addr = ip; //inet_addr(ip);   htonl(INADDR_ANY);
-    serveraddr.sin_port = htons(port);
-    retval = bind(listenSocket, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
-    if (retval == SOCKET_ERROR)
-        std::cout << "bind()\n";
-
-    // listen()
-    retval = listen(listenSocket, SOMAXCONN);
-    if (retval == SOCKET_ERROR)
-        std::cout << "listen()\n";
-
-
+    // IOCP handle 생성
+    CreateIOCP(runningThreadCount);
 
     //=================================================================================================================
-    // 2. 세션 관리 초기화
+    // 2. 서버 소켓 옵션 설정 및 bind / listen 
     //=================================================================================================================
     
-    // 여기서 세션에 관련된 모든 정보들을 초기화. 만약 풀이 필요하다면 관련 코드 삽입
-    maxConnections = maxSessionCount;
-    sessions = new CSession[maxConnections];
+    // 소켓 옵션 조정
+    SetOptions(nagleOption);
 
+    // listen 소켓에 서버에 접속할 NIC, PORT 번호 bind
+    Bind(ip, port);
 
-    
+    // listen 소켓 생성
+    Listen(maxSessionCount);
 
     //=================================================================================================================
     // 3. 서버 가동에 필요한 정보를 로드
     //=================================================================================================================
-    isServerMaintrenanceMode = true;
 
-    InitializeCriticalSection(&cs_sessionID);
-
-    // stack 방식으로 세션 ID의 배열 정보를 저장( 0 ~ maxConnections 사이의 값을 인덱스로 사용 )
-    for (int i = maxConnections - 1; i >= 0; --i)
-    {
-        stSessionIndex.push(i);
-    }
-
-
-
+    InitResource(maxSessionCount);
 
     //=================================================================================================================
     // 4. 스레드 풀 생성
     //=================================================================================================================
-    threadCnt = workerThreadCount;
-    hThreads = new HANDLE[threadCnt + 1];
 
-    DWORD dwThreadID;
-
-    // Accept Thread 호출
-    hThreads[0] = (HANDLE)_beginthreadex(NULL, 0, AcceptThread, this, 0, (unsigned int*)&dwThreadID);
-
-    // Worker Threads 호출
-    for (UINT8 i = 0; i < workerThreadCount; ++i)
-    {
-        hThreads[i + 1] = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, this, 0, (unsigned int*)&dwThreadID);
-    }
+    CreateThreadPool(workerThreadCount);
 
     return true;  // 성공 시 true 반환
 }
@@ -130,13 +63,14 @@ void CGameServer::Stop(void)
     // ===========================================================================
     // 2. 리소스 정리
     // ===========================================================================
-    Release();
+    ReleaseResource();
 
     // ===========================================================================
     // 3. 스레드가 정상 종료되었는지 검사
     // ===========================================================================
     DWORD ExitCode;
 
+    // 이 아래쪽 코드는 뜨면 안됨. 뜬다는 것은 main이 종료되었음에도 스레드가 살아있다는 의미.
     wprintf(L"\n\n--- THREAD CHECK LOG -----------------------------\n\n");
 
     GetExitCodeThread(hThreads[0], &ExitCode);
@@ -154,7 +88,7 @@ void CGameServer::Stop(void)
     WSACleanup();
 }
 
-void CGameServer::Release(void)
+void CGameServer::ReleaseResource(void)
 {
     // 세션 삭제
     delete[] sessions;
@@ -183,19 +117,19 @@ void CGameServer::SendPacket(UINT64 sessionID, CPacket* pPacket)
     // 세션을 찾았다면
     if (pSession->id == sessionID)
     {
-        // 패킷 선언
-        CPacket packet;
+        // 패킷 할당
+        CPacket* pSendPacket = new CPacket;
 
         // 헤더 정보 삽입
         PACKET_HEADER header;
         header.bySize = pPacket->GetDataSize();
-        packet.PutData((char*)&header, sizeof(PACKET_HEADER));
+        pSendPacket->PutData((char*)&header, sizeof(PACKET_HEADER));
 
         // 인자로 받은 패킷의 데이터 삽입
-        packet.PutData(pPacket->GetFrontBufferPtr(), pPacket->GetDataSize());
+        pSendPacket->PutData(pPacket->GetFrontBufferPtr(), pPacket->GetDataSize());
 
-        // sendQ에 넣음
-        pSession->sendQ.Enqueue(packet.GetFrontBufferPtr(), packet.GetDataSize());
+        // sendQ에 직렬화 버퍼 자체를 넣음
+        pSession->sendQ.Enqueue(pSendPacket);
     }
     // 아니라면 재활용되면서 이상한 값이 나올 수 있다.
     else
@@ -209,6 +143,11 @@ void CGameServer::SendPacket(UINT64 sessionID, CPacket* pPacket)
 // 세션이 만들어지기 전에 허락을 받는 함수. 서버 테스트나 점검 등이 필요할 때 사내 IP만 접속할 수 있도록 인원을 제한하는 방식.
 bool CGameServer::OnConnectionRequest(const std::string& ip, int port)
 {
+    std::string str{ "1.0.8.0" };
+    if (ip == str)
+        return false;
+
+
     // 지금은 테스트를 위해 일단 true를 반환
     return true;
 
@@ -266,6 +205,187 @@ void CGameServer::OnRecv(UINT64 sessionID, CPacket* pPacket)
     SendPacket(sessionID, pPacket);
 }
 
+void CGameServer::InitWinSock(void) noexcept
+{
+    // 윈도우 소켓 초기화
+    WSADATA wsaData;
+
+    int retVal = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (retVal != 0) {
+        std::cout << "Error : WSAStartup failed " << retVal << ", " << WSAGetLastError() << "\n";
+        DebugBreak();
+    }
+}
+
+void CGameServer::CreateListenSocket(PROTOCOL_TYPE type)
+{
+    switch (type)
+    {
+    case PROTOCOL_TYPE::TCP_IP:
+        // 이미 2인자에서 TCP냐 UDP냐 결정이 났기 때문에 3인자에 넣지 않아도 무방하다.
+        listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (listenSocket == INVALID_SOCKET)
+        {
+            std::cerr << "Error : TCP CreateListenSocket()" << WSAGetLastError() << "\n";
+            DebugBreak();
+        }
+        break;
+    case PROTOCOL_TYPE::UDP:
+        listenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        if (listenSocket == INVALID_SOCKET)
+        {
+            std::cerr << "Error : UDP CreateListenSocket()" << WSAGetLastError() << "\n";
+            DebugBreak();
+        }
+        break;
+    default:
+        std::cerr << "Error : default socket()" << WSAGetLastError() << "\n";
+        DebugBreak();
+        break;
+    }
+}
+
+void CGameServer::CreateIOCP(int runningThreadCount)
+{
+    // CPU 개수 확인
+    //SYSTEM_INFO si;
+    //GetSystemInfo(&si);
+    // int ProcessorNum = si.dwNumberOfProcessors;
+    // 프로세서 갯수 미만으로 IOCP Running 스레드의 갯수를 제한하면서 테스트 해볼 것.
+
+    // 입출력 완료 포트 생성
+    hIOCP = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, runningThreadCount);
+    if (hIOCP == NULL)
+    {
+        std::cerr << "INVALID_HANDLE : hIOCP, Error : " << WSAGetLastError() << "\n";
+        DebugBreak();
+    }
+}
+
+void CGameServer::Bind(unsigned long ip, UINT16 port)
+{
+    // bind()
+    SOCKADDR_IN serveraddr;
+    ZeroMemory(&serveraddr, sizeof(serveraddr));
+
+    serveraddr.sin_family = AF_INET;
+    serveraddr.sin_addr.s_addr = ip; //inet_addr(ip);   htonl(INADDR_ANY);
+    serveraddr.sin_port = htons(port);
+    int retval = bind(listenSocket, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
+
+    if (retval == SOCKET_ERROR)
+    {
+        std::cout << "Error : Bind(), " << WSAGetLastError() << "\n";
+        DebugBreak();
+    }
+}
+
+void CGameServer::Listen(int somaxconn)
+{
+    // listen()
+    int retval = listen(listenSocket, somaxconn);
+    if (retval == SOCKET_ERROR)
+    {
+        std::cout << "Error : Listen(), " << WSAGetLastError() << "\n";
+        DebugBreak();
+    }
+}
+
+void CGameServer::InitResource(int maxSessionCount)
+{
+    // 여기서 세션에 관련된 모든 정보들을 초기화. 만약 풀이 필요하다면 관련 코드 삽입
+    maxConnections = maxSessionCount;
+    sessions = new CSession[maxConnections];
+
+    // stack 방식으로 세션 ID의 배열 정보를 저장( 0 ~ maxConnections 사이의 값을 인덱스로 사용 )
+    for (int i = maxConnections - 1; i >= 0; --i)
+    {
+        stSessionIndex.push(i);
+    }
+
+
+
+    isServerMaintrenanceMode = true;
+
+    InitializeCriticalSection(&cs_sessionID);
+}
+
+void CGameServer::CreateThreadPool(int workerThreadCount)
+{
+    threadCnt = workerThreadCount;
+    hThreads = new HANDLE[threadCnt + 1];
+
+    DWORD dwThreadID;
+
+    // Accept Thread 호출
+    hThreads[0] = (HANDLE)_beginthreadex(NULL, 0, AcceptThread, this, 0, (unsigned int*)&dwThreadID);
+
+    // Worker Threads 호출
+    for (UINT8 i = 0; i < workerThreadCount; ++i)
+    {
+        hThreads[i + 1] = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, this, 0, (unsigned int*)&dwThreadID);
+    }
+}
+
+void CGameServer::SetTCPSendBufSize(SOCKET socket, UINT32 size)
+{
+    int recvBufSize = size;
+    if (setsockopt(listenSocket, SOL_SOCKET, SO_SNDBUF, (const char*)&recvBufSize, sizeof(recvBufSize)) == SOCKET_ERROR)
+    {
+        std::cerr << "setsockopt failed with error : " << WSAGetLastError() << "\n";
+        closesocket(listenSocket);
+        listenSocket = INVALID_SOCKET;
+        WSACleanup();
+        DebugBreak();
+    }
+}
+
+void CGameServer::SetNonBlockingMode(SOCKET socket, bool bNonBlocking)
+{
+    u_long mode = bNonBlocking; // 1: Non-blocking, 0: Blocking
+    if (ioctlsocket(listenSocket, FIONBIO, &mode) != 0) {
+        std::cerr << "Failed to set non-blocking mode. Error : " << WSAGetLastError() << "\n";
+        DebugBreak();
+    }
+}
+
+void CGameServer::DisableNagleAlgorithm(SOCKET socket, bool bNagleOn)
+{
+    int flag = !bNagleOn; // 1: Nagle 비활성화, 0: 기본이 0으로 Nagle이 켜져 있는 상황
+    // Nagle 옵션이 true라면 Nagle을 키는 상황이고, flag == 0, flag 값이 0이여야 킴
+    // Nagle 옵션이 false라면 Nagle을 끄는 상황이다. flag == 1, flag 값이 1이면 끔
+    if (setsockopt(listenSocket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag)) != 0) {
+        std::cerr << "Failed to disable Nagle algorithm. Error : " << WSAGetLastError() << "\n";
+        DebugBreak();
+    }
+}
+
+void CGameServer::EnableRSTOnClose(SOCKET socket)
+{
+    // 기본값이 l_onoff == 0 이라 설정 안해도 RST가 날아간다. 명시적으로 호출함 해보고 싶었음.
+    struct linger lingerOpt = { 0, 0 }; // l_onoff = 1, l_linger = 0
+    if (setsockopt(listenSocket, SOL_SOCKET, SO_LINGER, (char*)&lingerOpt, sizeof(lingerOpt)) != 0) {
+        std::cerr << "Failed to enable RST on close. Error :" << WSAGetLastError() << "\n";
+        DebugBreak();
+    }
+}
+
+void CGameServer::SetOptions(bool bNagleOn)
+{
+    // sendbuf 크기 설정 (송신 버퍼의 크기를 0으로 설정해 중간 단계 버퍼링 없이 메모리에 직접 direct I/O를 유도)
+    SetTCPSendBufSize(listenSocket, 0);
+
+    // blocking, non-blocking 소켓 모드 전환
+    // accept 스레드는 일이 있을 때만 일어나는게 효율적이기에 listen 소켓을 blokcing 소켓으로 설정.
+    SetNonBlockingMode(listenSocket, false);
+
+    // RST 활성, 기본적으로 활성되어 있기에 그냥 호출해보는 것
+    EnableRSTOnClose(listenSocket);
+
+    // nagle 옵션 활성/비활성. bNagleOn이 true면 켜지는것. 기본이 켜져 있기에 사실 false만이 유의미한 변화가 있음.
+    DisableNagleAlgorithm(listenSocket, bNagleOn);
+}
+
 CSession* CGameServer::FetchSession(void)
 {
     UINT64 sessionID = 0;
@@ -299,6 +419,9 @@ CSession* CGameServer::FetchSession(void)
 void CGameServer::returnSession(CSession* pSession)
 {
     EnterCriticalSection(&cs_sessionID);
+
+    // sendQ에 아직 처리되지 못한 패킷들 정리
+    pSession->sendQ.ClearQueue();
 
     // 소켓 close
     closesocket(pSession->sock);
@@ -336,7 +459,7 @@ void CGameServer::InitSessionInfo(CSession* pSession)
     pSession->sendFlag = 0;
 
     // 링버퍼 초기화
-    pSession->sendQ.ClearBuffer();
+    pSession->sendQ.ClearQueue();
     pSession->recvQ.ClearBuffer(); 
     
     // 해당 세션이 살아있는지 여부, 첫 값은 TRUE로 컨텐츠 쪽에서 끊었을 경우에만 0으로 변경한다.

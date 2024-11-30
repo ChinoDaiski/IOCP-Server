@@ -73,7 +73,7 @@ void CLanServer::SendPost(CSession* pSession)
     int retval;
     int error;
 
-    WSABUF sendBuf[2];
+    WSABUF sendBuf[MAX_PACKET_QUEUE_SIZE];
     int bufCnt = pSession->sendQ.makeWSASendBuf(sendBuf);
 
     // A 스레드가 사이즈를 확인하고 아직 interlock을 호출하지 않은 상황에서, 컨텍스트 스위칭. 
@@ -228,10 +228,12 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 }
 
                 // 4. RecvQ에서 header의 len 크기만큼 임시 패킷 버퍼를 뽑는다.
-                CPacket Packet; // 힙 매니저가 같은 공간을 계속 사용. 디버깅 해보니 지역변수지만 같은 영역을 계속 사용하고 있음.
+                CPacket* Packet = new CPacket; // 힙 매니저가 같은 공간을 계속 사용. 디버깅 해보니 지역변수지만 같은 영역을 계속 사용하고 있음.
+                Packet->AddRef();
+
                 int echoSendSize = header.bySize + sizeof(PACKET_HEADER);
-                int recvQDeqRetVal = pSession->recvQ.Dequeue(Packet.GetFrontBufferPtr(), echoSendSize);
-                Packet.MoveWritePos(echoSendSize);
+                int recvQDeqRetVal = pSession->recvQ.Dequeue(Packet->GetFrontBufferPtr(), echoSendSize);
+                Packet->MoveWritePos(echoSendSize);
 
                 if (recvQDeqRetVal != echoSendSize)
                 {
@@ -239,10 +241,18 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 }
 
                 // 콘텐츠 코드 OnRecv에 세션의 id와 패킷 정보를 넘겨줌
-                Packet.MoveReadPos(sizeof(PACKET_HEADER));  // len 길이에 대한 정보를 지움, netlib에서 사용하는 패킷의 길이에 대한 정보를 날림.
+                Packet->MoveReadPos(sizeof(PACKET_HEADER));  // len 길이에 대한 정보를 지움, netlib에서 사용하는 패킷의 길이에 대한 정보를 날림.
                 Logging(pSession, ACTION::WORKER_RECV_ONRECV_START);
-                pThis->OnRecv(pSession->id, &Packet);  // 페이로드만 남은 패킷 정보를 컨텐츠에 넘김
+                pThis->OnRecv(pSession->id, Packet);  // 페이로드만 남은 패킷 정보를 컨텐츠에 넘김
                 Logging(pSession, ACTION::WORKER_RECV_ONRECV_AFTER);
+
+
+                // 패킷의 release 함수를 호출해서 refCounter를 1줄이고, 줄여진 값이 0인 것을 확인
+                if (Packet->ReleaseRef() == 0)
+                {
+                    // 0이라면 패킷을 제거
+                    delete Packet;
+                }
             }
 
             // recv 처리
@@ -253,17 +263,26 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
 
         // send 완료 통지가 온 경우
         else if (pOverlapped == &pSession->overlappedSend) {
-
+            
             // 보내는 것을 완료 했으므로 sendQ에 있는 데이터를 제거
-            pSession->sendQ.MoveFront(transferredDataLen);
+
+            // 인자로 받은 데이터의 크기를 보고 안에 있는 패킷을 pop.
+            pSession->sendQ.RemoveSendCompletePacket(transferredDataLen);
+
+            //// 이 시점에서 read, writepos 기록
+            //Logging(pSession, (UINT32)ACTION::SEND_QUEUE_SENDQ_WRITEPOS + pSession->sendQ.GetWritePos());
+            //Logging(pSession, (UINT32)ACTION::SEND_QUEUE_SENDQ_READPOS + pSession->sendQ.GetReadPos());
+
 
             // sendFlag를 먼저 놓고, sendQ에 보낼 데이터가 있는지 확인한다. 
             // 다른 스레드에서 recv 완료통지를 처리할 때 sendQ에 enq 하고, sendFlag를 검사하기에
             // 둘 중 하나는 무조건 sendFlag가 올바르게 적용된다.
             InterlockedExchange(&pSession->sendFlag, 0);
 
+            
+
             // 만약 sendQ에 데이터가 있다면
-            if (pSession->sendQ.GetUseSize() != 0)
+            if (!pSession->sendQ.empty())
             {
                 // send 처리
                 Logging(pSession, ACTION::WORKER_SEND_HAS_DATA);
@@ -279,6 +298,10 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 // 이미 sendFlag 0으로 바꿨으니 아무것도 할 것이 없다.
                 ;
             }
+
+            //// 이 시점에서 read, writepos 기록
+            //Logging(pSession, (UINT32)ACTION::SEND_QUEUE_SENDQ_WRITEPOS + pSession->sendQ.GetWritePos());
+            //Logging(pSession, (UINT32)ACTION::SEND_QUEUE_SENDQ_READPOS + pSession->sendQ.GetReadPos());
         }
 
         // 완료통지 처리 이후 IO Count 1 감소
@@ -332,8 +355,9 @@ unsigned int __stdcall CLanServer::AcceptThread(void* pArg)
         addrlen = sizeof(clientaddr);
         client_sock = accept(pThis->listenSocket, (SOCKADDR*)&clientaddr, &addrlen);
         if (client_sock == INVALID_SOCKET) {
-            std::cout << "accept()\n";
-            break;
+            int error = WSAGetLastError();
+            std::cout << "Error : accept failed - " << error << "\n";
+            DebugBreak();
         }
 
 
