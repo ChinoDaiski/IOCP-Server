@@ -99,5 +99,4 @@ public:
 };
 
 void Logging(CSession* pSession, ACTION _action);
-
 void Logging(CSession* pSession, UINT32 _action);

@@ -1,3 +1,4 @@
+
 #include "pch.h"
 #include "Protocol.h"
 #include "IServer.h"
@@ -433,4 +434,7 @@ void CLanServer::ClearTPSValue(void)
     statusTPS.accept = InterlockedExchange(&acceptTPS, 0);
     statusTPS.recvMessage = InterlockedExchange(&recvMessageTPS, 0);
     statusTPS.sendMessage = InterlockedExchange(&sendMessageTPS, 0);
+
+    statusTPS.CurPoolCount = stSessionIndex.GetCurPoolCount();
+    statusTPS.MaxPoolCount = stSessionIndex.GetMaxPoolCount();
 }

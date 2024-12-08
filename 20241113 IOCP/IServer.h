@@ -2,10 +2,10 @@
 
 #include <Windows.h>
 #include <stack>
+#include "concurrent_stack.h"
 
 class CPacket;
 class CSession;
-
 
 // 각 행동이 초당 얼마나 일어나는지 확인하는 변수 
 struct FrameStats
@@ -13,6 +13,10 @@ struct FrameStats
     UINT32 accept;
     UINT32 recvMessage;
     UINT32 sendMessage;
+
+    // 메모리 풀 관련. 세션 index 값을 관리하는 concurrent_stack이 가지고 있는 메모리 풀의 사용량.
+    UINT32 CurPoolCount;
+    UINT32 MaxPoolCount;
 };
 
 class CLanServer { 
@@ -71,7 +75,7 @@ protected:
     HANDLE* hThreads;   // 실제 스레드의 핸들값. 이 값으로 서버 종료시 스레드의 종료 여부를 판단함. WaitForMultipleObjects 호출에 사용.
 
 protected:
-    std::stack<UINT16> stSessionIndex; // 스레드 인덱스들을 보관하는 스택, 접근시 동기화 lock을 걸고 사용
+    concurrent_stack<UINT16> stSessionIndex; // 스레드 인덱스들을 보관하는 스택
     CRITICAL_SECTION cs_sessionID;
 
 protected:

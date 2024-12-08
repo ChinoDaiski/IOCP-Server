@@ -39,9 +39,6 @@ void MoveCursorToTop() {
 }
 
 
-
-
-
 unsigned int WINAPI MonitorThread(void* pArg);
 
 int main(void)
@@ -88,6 +85,12 @@ void PrintTPSValue(UINT32 acceptTPS, UINT32 recvTPS, UINT32 sendTPS)
     std::cout << "sendMessageTPS : " << sendTPS << "\n";
 }
 
+void PrintMemoryPoolValue(UINT32 curPoolCount, UINT32 maxPoolCount)
+{
+    std::cout << "curPoolCount : " << curPoolCount << "\n";
+    std::cout << "maxPoolCount : " << maxPoolCount << "\n";
+}
+
 // 인자로 받은 서버의 TPS 및 보고 싶은 정보를 1초마다 감시하는 스레드
 unsigned int WINAPI MonitorThread(void* pArg)
 {
@@ -113,6 +116,9 @@ unsigned int WINAPI MonitorThread(void* pArg)
 
         // TPS 출력
         PrintTPSValue(status.accept, status.recvMessage, status.sendMessage);
+
+        // 메모리 풀 관련 출력
+        PrintMemoryPoolValue(status.CurPoolCount, status.MaxPoolCount);
 
         std::cout << "\nCurrent SessionCount : " << pThis->GetSessionCount() << "\n";
         std::cout << "Disconnected SessionCount : " << pThis->GetDisconnectedSessionCnt() << "\n";

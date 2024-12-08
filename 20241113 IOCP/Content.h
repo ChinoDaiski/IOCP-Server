@@ -1,10 +1,6 @@
 #pragma once
 
 #include "Packet.h"
-#include "IServer.h"
-#include "IContent.h"
-
-#include <unordered_map>
 
 class CPlayer
 {

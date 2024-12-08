@@ -45,14 +45,20 @@
     <Filter Include="소스 파일\96. CrashDump">
       <UniqueIdentifier>{c438b765-ccd4-40b2-8b4c-da99c6d019f5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\06. Timer">
+      <UniqueIdentifier>{538e56d6-7919-4c6e-90c2-b439fabb2d78}</UniqueIdentifier>
+    </Filter>
     <Filter Include="소스 파일\95. SystemMonitor">
       <UniqueIdentifier>{7c35e243-256e-4c6f-b333-a91ef833efca}</UniqueIdentifier>
     </Filter>
     <Filter Include="소스 파일\95. SystemMonitor\cpuUsage">
       <UniqueIdentifier>{cd8fb7da-66c1-40b9-a382-20aba32df246}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\06. Timer">
-      <UniqueIdentifier>{538e56d6-7919-4c6e-90c2-b439fabb2d78}</UniqueIdentifier>
+    <Filter Include="소스 파일\94. MemoryPool">
+      <UniqueIdentifier>{025d494b-c0cc-4b2b-be48-b1e67898cf24}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\94. MemoryPool\lockfreeStack">
+      <UniqueIdentifier>{f487f46f-8377-4210-83a8-991f02bcc7bc}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -138,6 +144,12 @@
     </ClInclude>
     <ClInclude Include="Timer.h">
       <Filter>소스 파일\06. Timer</Filter>
+    </ClInclude>
+    <ClInclude Include="MemoryPool.h">
+      <Filter>소스 파일\94. MemoryPool</Filter>
+    </ClInclude>
+    <ClInclude Include="concurrent_stack.h">
+      <Filter>소스 파일\94. MemoryPool\lockfreeStack</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

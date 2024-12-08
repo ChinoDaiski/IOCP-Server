@@ -170,10 +170,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CircularQueue.h" />
+    <ClInclude Include="concurrent_stack.h" />
     <ClInclude Include="Content.h" />
     <ClInclude Include="cpuUsage.h" />
     <ClInclude Include="CrashDump.h" />
     <ClInclude Include="IContent.h" />
+    <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="Packet.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Protocol.h" />

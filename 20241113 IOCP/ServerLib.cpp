@@ -6,6 +6,7 @@
 
 #include "Session.h"
 #include "Protocol.h"
+#include "Packet.h"
 
 bool CGameServer::Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, int maxSessionCount)
 {
@@ -414,8 +415,8 @@ CSession* CGameServer::FetchSession(void)
     EnterCriticalSection(&cs_sessionID);
 
     // 사용하지 않는 배열 인덱스를 찾음
-    UINT16 sessionIndex = stSessionIndex.top();
-    stSessionIndex.pop();
+    UINT16 sessionIndex;
+    while (!stSessionIndex.pop(sessionIndex));
 
     LeaveCriticalSection(&cs_sessionID);
 

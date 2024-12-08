@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Packet.h"
 #include "IServer.h"
 
 #define MAX_SESSION_CNT 100
@@ -15,6 +14,10 @@ enum class PROTOCOL_TYPE
     UDP,
     END
 };
+
+class CSession;
+class CPacket;
+class CLanServer;
 
 class CGameServer : public CLanServer {
 public:
