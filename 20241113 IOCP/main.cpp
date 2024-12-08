@@ -10,28 +10,46 @@
 
 #include "Protocol.h"
 
+#include "SystemMonitor.h"
+#include "Timer.h"
+
 #define SERVERPORT 6000
 
 SOCKET g_listenSocket; 
-HANDLE g_hIOCP; 
 UINT32 g_id = 0;
 
 // key로 id를 받아 관리되는 세션 맵
 std::unordered_map<UINT32, CSession*> g_clients;
 
 
+
+
+void MoveCursorToTop() {
+
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE); // 콘솔 핸들 가져오기
+    COORD coord = { 0, 0 }; // 커서를 콘솔 맨 앞으로 이동
+    SetConsoleCursorPosition(hConsole, coord); // 커서 위치 설정
+
+    for (int i = 0; i < 30; ++i)
+    {
+        std::cout << "                                                     \n";
+    }
+
+    SetConsoleCursorPosition(hConsole, coord); // 커서 위치 설정
+}
+
+
+
+
+
 unsigned int WINAPI MonitorThread(void* pArg);
 
 int main(void)
 {
-    timeBeginPeriod(1);
-
     CGameServer GameServer;
-    GameServer.Start(htonl(INADDR_ANY), SERVERPORT, 8, 4, true, 20000);
 
     // IP 입력시 inet_addr(ip); <- 원하는 IP를 문자열로 또는 htonl(INADDR_ANY)를 호출해서 모든 NIC으로부터 데이터를 받을 수 도 있다.
-
-
+    GameServer.Start(htonl(INADDR_ANY), SERVERPORT, 8, 4, true, 20000);
 
     // 모니터 스레드 생성
     HANDLE hMonitorThread;   // 모니터 스레드 핸들값
@@ -53,12 +71,10 @@ int main(void)
             //------------------------------------------------
             // 종료처리
             //------------------------------------------------
-            PostQueuedCompletionStatus(g_hIOCP, 0, 0, NULL);
+            GameServer.Stop();
             break;
         }
     }
-
-    GameServer.Stop();
 
     return 0;
 }
@@ -77,20 +93,34 @@ unsigned int WINAPI MonitorThread(void* pArg)
 {
     CLanServer* pThis = (CLanServer*)pArg;
 
+    SystemMonitor monitor;
+    Timer timer;
+
     while (true)
     {
-        std::cout << "===================================\n";
+        MoveCursorToTop();
 
-        // TPS 출력
-        PrintTPSValue(pThis->GetAcceptTPS(), pThis->GetRecvMessageTPS(), pThis->GetSendMessageTPS());
-
-        std::cout << "Current SessionCount : " << pThis->GetSessionCount() << "\n";
-        std::cout << "Disconnected SessionCount : " << pThis->GetDisconnectedSessionCnt() << "\n";
-        std::cout << "Packet Use Count : " << CPacket::usePacketCnt << "\n";
-
-        std::cout << "===================================\n\n";
         // value 초기화
         pThis->ClearTPSValue();
+        const FrameStats& status = pThis->GetStatusTPS();
+
+        std::wcout << L"======================================================" << std::endl;
+
+        // 서버 시간 출력
+        timer.PrintElapsedTime();
+
+        std::cout << "\n\n";
+
+        // TPS 출력
+        PrintTPSValue(status.accept, status.recvMessage, status.sendMessage);
+
+        std::cout << "\nCurrent SessionCount : " << pThis->GetSessionCount() << "\n";
+        std::cout << "Disconnected SessionCount : " << pThis->GetDisconnectedSessionCnt() << "\n";
+        std::cout << "Packet Use Count : " << CPacket::usePacketCnt << "\n\n";
+
+        monitor.PrintMonitoringData();
+
+        std::wcout << L"======================================================" << std::endl;
 
         // 1초간 Sleep
         Sleep(1000);

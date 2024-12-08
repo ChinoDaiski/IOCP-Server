@@ -430,7 +430,7 @@ unsigned int __stdcall CLanServer::AcceptThread(void* pArg)
 
 void CLanServer::ClearTPSValue(void)
 {
-    InterlockedExchange(&acceptTPS, 0);
-    InterlockedExchange(&recvMessageTPS, 0);
-    InterlockedExchange(&sendMessageTPS, 0);
+    statusTPS.accept = InterlockedExchange(&acceptTPS, 0);
+    statusTPS.recvMessage = InterlockedExchange(&recvMessageTPS, 0);
+    statusTPS.sendMessage = InterlockedExchange(&sendMessageTPS, 0);
 }

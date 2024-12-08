@@ -45,6 +45,15 @@
     <Filter Include="소스 파일\96. CrashDump">
       <UniqueIdentifier>{c438b765-ccd4-40b2-8b4c-da99c6d019f5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\95. SystemMonitor">
+      <UniqueIdentifier>{7c35e243-256e-4c6f-b333-a91ef833efca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\95. SystemMonitor\cpuUsage">
+      <UniqueIdentifier>{cd8fb7da-66c1-40b9-a382-20aba32df246}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\06. Timer">
+      <UniqueIdentifier>{538e56d6-7919-4c6e-90c2-b439fabb2d78}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Content.cpp">
@@ -76,6 +85,15 @@
     </ClCompile>
     <ClCompile Include="IServer.cpp">
       <Filter>소스 파일\03. ServerLib\Interface</Filter>
+    </ClCompile>
+    <ClCompile Include="SystemMonitor.cpp">
+      <Filter>소스 파일\95. SystemMonitor</Filter>
+    </ClCompile>
+    <ClCompile Include="cpuUsage.cpp">
+      <Filter>소스 파일\95. SystemMonitor\cpuUsage</Filter>
+    </ClCompile>
+    <ClCompile Include="Timer.cpp">
+      <Filter>소스 파일\06. Timer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -111,6 +129,15 @@
     </ClInclude>
     <ClInclude Include="CrashDump.h">
       <Filter>소스 파일\96. CrashDump</Filter>
+    </ClInclude>
+    <ClInclude Include="SystemMonitor.h">
+      <Filter>소스 파일\95. SystemMonitor</Filter>
+    </ClInclude>
+    <ClInclude Include="cpuUsage.h">
+      <Filter>소스 파일\95. SystemMonitor\cpuUsage</Filter>
+    </ClInclude>
+    <ClInclude Include="Timer.h">
+      <Filter>소스 파일\06. Timer</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

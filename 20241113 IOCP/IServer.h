@@ -6,6 +6,15 @@
 class CPacket;
 class CSession;
 
+
+// 각 행동이 초당 얼마나 일어나는지 확인하는 변수 
+struct FrameStats
+{
+    UINT32 accept;
+    UINT32 recvMessage;
+    UINT32 sendMessage;
+};
+
 class CLanServer { 
 public:
     virtual ~CLanServer() {}
@@ -40,11 +49,8 @@ public:
     static unsigned int WINAPI AcceptThread(void* pArg);
 
     // 모니터링 관련
-    UINT32 GetAcceptTPS(void) const { return acceptTPS; }
-    UINT32 GetRecvMessageTPS(void) const { return recvMessageTPS; }
-    UINT32 GetSendMessageTPS(void) const { return sendMessageTPS; }
-
-    void ClearTPSValue(void);   // TPS 측정관련 변수들을 모두 0으로 초기화 하는 함수
+    const FrameStats& GetStatusTPS(void) const { return statusTPS; }
+    void ClearTPSValue(void);   // TPS 측정관련 변수들을 모두 0으로 초기화 하면서 statusTPS에 값을 넣는 함수.
 
     UINT32 GetDisconnectedSessionCnt(void) const { return disconnectedSessionCnt; }
 
@@ -53,6 +59,8 @@ private:
     UINT32 acceptTPS = 0;
     UINT32 recvMessageTPS = 0;
     UINT32 sendMessageTPS = 0;
+
+    FrameStats statusTPS;
 
 protected:
     HANDLE hIOCP;  // IOCP 핸들

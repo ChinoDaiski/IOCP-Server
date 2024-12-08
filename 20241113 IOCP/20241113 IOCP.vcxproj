@@ -151,6 +151,7 @@
   <ItemGroup>
     <ClCompile Include="CircularQueue.cpp" />
     <ClCompile Include="Content.cpp" />
+    <ClCompile Include="cpuUsage.cpp" />
     <ClCompile Include="CrashDump.cpp" />
     <ClCompile Include="IServer.cpp" />
     <ClCompile Include="main.cpp" />
@@ -164,10 +165,13 @@
     <ClCompile Include="RingBuffer.cpp" />
     <ClCompile Include="ServerLib.cpp" />
     <ClCompile Include="Session.cpp" />
+    <ClCompile Include="SystemMonitor.cpp" />
+    <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CircularQueue.h" />
     <ClInclude Include="Content.h" />
+    <ClInclude Include="cpuUsage.h" />
     <ClInclude Include="CrashDump.h" />
     <ClInclude Include="IContent.h" />
     <ClInclude Include="Packet.h" />
@@ -177,6 +181,8 @@
     <ClInclude Include="IServer.h" />
     <ClInclude Include="ServerLib.h" />
     <ClInclude Include="Session.h" />
+    <ClInclude Include="SystemMonitor.h" />
+    <ClInclude Include="Timer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
