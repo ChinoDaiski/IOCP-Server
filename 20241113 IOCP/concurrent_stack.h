@@ -7,9 +7,11 @@ class concurrent_stack {
 private:
     struct Node {
         T data;
-        Node* next;
+        UINT64 next;    // 원래는 Node* next 였는데, 어짜피 stamp값을 박아서 상위 17bit를 채운 값을 가지고 있을 것이기에
+        // bit 연산을 줄이기 위해서 이렇게 사용한다.
 
-        Node(T _data, Node* _next) : data{ _data }, next{ _next } {}
+
+        Node(T _data, UINT64 _next) : data{ _data }, next{ _next } {}
     };
 
     struct AddressConverter {
@@ -27,10 +29,6 @@ private:
             return reinterpret_cast<Node*>(taggedPointer & POINTER_MASK);
         }
     };
-
-    //bool CAS(UINT64* target, UINT64 expected, UINT64 desired) {
-    //    return InterlockedCompareExchange64(reinterpret_cast<LONG64*>(target), desired, expected) == expected;
-    //}
 
 public:
     concurrent_stack() : top(0), stamp(0) {}
@@ -51,13 +49,11 @@ public:
         UINT64 currentTop;
         UINT64 newTop;
 
+        newTop = AddressConverter::AddStamp(newNode, stValue);
+
         while (true) {
             currentTop = top;
-            currentNode = AddressConverter::ExtractNode(currentTop);
-
-            newNode->next = currentNode; // 새로운 노드의 next를 현재 top으로 설정
-
-            newTop = AddressConverter::AddStamp(newNode, stValue);
+            newNode->next = currentTop; // 새로운 노드의 next를 현재 top으로 설정
 
             if (CAS(&top, currentTop, newTop)) {
                 break; // 성공적으로 Push 완료
@@ -67,9 +63,8 @@ public:
 
     bool pop(T& value) {
         Node* currentNode;
-        Node* nextNode = nullptr;
+        UINT64 nextNode;
         UINT64 currentTop;
-        UINT64 newTop;
         UINT64 stValue = InterlockedIncrement(&stamp);
 
         while (true) {
@@ -81,9 +76,8 @@ public:
             }
 
             nextNode = currentNode->next;
-            newTop = AddressConverter::AddStamp(nextNode, stValue);
 
-            if (CAS(&top, currentTop, newTop)) {
+            if (CAS(&top, currentTop, nextNode)) {
                 value = currentNode->data;
                 pool.Free(currentNode);
                 return true; // 성공적으로 Pop 완료

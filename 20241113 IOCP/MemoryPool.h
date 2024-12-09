@@ -6,8 +6,6 @@
 #include <new>
 #include <Windows.h>
 
-//#include "Profile.h"
-
 #include "CircularQueue.h"
 
 #define GUARD_VALUE 0xAAAABBBBCCCCDDDD
@@ -35,7 +33,7 @@ struct Node
 #ifndef _DEBUG
 
     T data;
-    Node<T>* next;
+    UINT64 next;
 
 #endif // !_DEBUG
 };
@@ -61,11 +59,11 @@ struct AddressConverter {
     }
 };
 
+#define CAS(target, expected, desired) (InterlockedCompareExchange64(reinterpret_cast<LONG64*>(target), desired, expected) == (expected))
+
 //bool CAS(UINT64* target, UINT64 expected, UINT64 desired) {
 //    return InterlockedCompareExchange64(reinterpret_cast<LONG64*>(target), desired, expected) == expected;
 //}
-
-#define CAS(target, expected, desired) (InterlockedCompareExchange64(reinterpret_cast<LONG64*>(target), desired, expected) == (expected))
 
 
 //// 디버깅 정보 기록
@@ -108,16 +106,16 @@ public:
 
     // 소멸자
     virtual ~MemoryPool(void);
-    
+
     // 풀에 있는 객체를 넘겨주거나 새로 할당해 넘김
     T* Alloc(void);
-    
+
     // 객체를 풀에 반환
     bool Free(T* ptr);
-   
+
 public:
-    UINT32 GetCurPoolCount(void){ return InterlockedCompareExchange(&m_curPoolCount, 0, 0); }
-    UINT32 GetMaxPoolCount(void){ return InterlockedCompareExchange(&m_maxPoolCount, 0, 0); }
+    UINT32 GetCurPoolCount(void) { return InterlockedCompareExchange(&m_curPoolCount, 0, 0); }
+    UINT32 GetMaxPoolCount(void) { return InterlockedCompareExchange(&m_maxPoolCount, 0, 0); }
 
 private:
     //Node<T>* m_freeNode;
@@ -128,8 +126,8 @@ private:
     UINT64 top; // Top을 나타내는 tagged pointer, Node<T>* m_freeNode가 바뀐 형태
     UINT64 stamp; // 기준이 되는 stamp 값
 
-//public:
-//    CircularQueue<DebugNode> debugQueue;
+    //public:
+    //    CircularQueue<DebugNode> debugQueue;
 };
 
 template<typename T, bool bPlacementNew>
@@ -149,7 +147,7 @@ inline MemoryPool<T, bPlacementNew>::MemoryPool(UINT32 sizeInitialize)
         {
             pArr[i] = Alloc();
         }
-        
+
         for (UINT32 i = 0; i < sizeInitialize; i++)
         {
             Free(pArr[i]);
@@ -163,7 +161,7 @@ template<typename T, bool bPlacementNew>
 inline MemoryPool<T, bPlacementNew>::~MemoryPool(void)
 {
     Node<T>* currentNode;
-    Node<T>* nextNode = nullptr;
+    UINT64 nextNode;
     UINT64 currentTop;
     UINT64 newTop;
     UINT64 stValue = InterlockedIncrement(&stamp);
@@ -178,9 +176,8 @@ inline MemoryPool<T, bPlacementNew>::~MemoryPool(void)
         }
 
         nextNode = currentNode->next;
-        newTop = AddressConverter<T>::AddStamp(nextNode, stValue);
 
-        if (CAS(&top, currentTop, newTop)) {
+        if (CAS(&top, currentTop, nextNode)) {
             delete currentNode;
             InterlockedDecrement(&m_maxPoolCount);
         }
@@ -198,7 +195,7 @@ template<typename T, bool bPlacementNew>
 inline T* MemoryPool<T, bPlacementNew>::Alloc(void)
 {
     Node<T>* currentNode;
-    Node<T>* nextNode = nullptr;
+    UINT64 nextNode;
     UINT64 currentTop;
     UINT64 newTop;
     UINT64 stValue = InterlockedIncrement(&stamp);
@@ -223,9 +220,10 @@ inline T* MemoryPool<T, bPlacementNew>::Alloc(void)
             newNode->POOL_INSTANCE_VALUE = reinterpret_cast<ULONG_PTR>(this);
 #endif // _DEBUG
 
-            newNode->next = nullptr;    // 정확힌 m_freeNode를 대입해도 된다. 근데 이 자체가 nullptr이니 보기 쉽게 nullptr 넣음.
+            newNode->next = 0;      // 정확힌 m_freeNode를 대입해도 된다. 근데 이 자체가 nullptr이니 보기 쉽게 nullptr 넣음.
+            // 이제 0으로 초기화
 
-            // placement New 옵션이 켜져있다면 생성자 호출
+// placement New 옵션이 켜져있다면 생성자 호출
             if constexpr (bPlacementNew)
             {
                 //new (reinterpret_cast<char*>(newNode) + offsetof(Node<T>, data)) T();
@@ -240,9 +238,8 @@ inline T* MemoryPool<T, bPlacementNew>::Alloc(void)
         }
 
         nextNode = currentNode->next;
-        newTop = AddressConverter<T>::AddStamp(nextNode, stValue);
 
-        if (CAS(&top, currentTop, newTop)) {
+        if (CAS(&top, currentTop, nextNode)) {
 
             // placement New 옵션이 켜져있다면 생성자 호출
             if constexpr (bPlacementNew)
@@ -310,13 +307,12 @@ inline bool MemoryPool<T, bPlacementNew>::Free(T* ptr)
     UINT64 currentTop;
     UINT64 newTop;
 
+    newTop = AddressConverter<T>::AddStamp(pNode, stValue);
+
     while (true) {
         currentTop = top;
-        currentNode = AddressConverter<T>::ExtractNode(currentTop);
 
-        pNode->next = currentNode; // 새로운 노드의 next를 현재 top으로 설정
-
-        newTop = AddressConverter<T>::AddStamp(pNode, stValue);
+        pNode->next = currentTop; // 새로운 노드의 next를 현재 top으로 설정
 
         if (CAS(&top, currentTop, newTop)) {
             break; // 성공적으로 Push 완료
