@@ -10,8 +10,10 @@
 
 #include "Protocol.h"
 
+#pragma comment(lib, "PDH_DLL.lib")
 #include "SystemMonitor.h"
-#include "Timer.h"
+
+//#include "Timer.h"
 
 #define SERVERPORT 6000
 
@@ -97,7 +99,6 @@ unsigned int WINAPI MonitorThread(void* pArg)
     CLanServer* pThis = (CLanServer*)pArg;
 
     SystemMonitor monitor;
-    Timer timer;
 
     while (true)
     {
@@ -109,10 +110,8 @@ unsigned int WINAPI MonitorThread(void* pArg)
 
         std::wcout << L"======================================================" << std::endl;
 
-        // 서버 시간 출력
-        timer.PrintElapsedTime();
-
-        std::cout << "\n\n";
+        monitor.PrintMonitoringData();
+        std::cout << "\n";
 
         // TPS 출력
         PrintTPSValue(status.accept, status.recvMessage, status.sendMessage);
@@ -124,7 +123,6 @@ unsigned int WINAPI MonitorThread(void* pArg)
         std::cout << "Disconnected SessionCount : " << pThis->GetDisconnectedSessionCnt() << "\n";
         std::cout << "Packet Use Count : " << CPacket::usePacketCnt << "\n\n";
 
-        monitor.PrintMonitoringData();
 
         std::wcout << L"======================================================" << std::endl;
 
