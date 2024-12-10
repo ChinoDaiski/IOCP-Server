@@ -38,7 +38,7 @@ bool CGameServer::Start(unsigned long ip, int port, int workerThreadCount, int r
     Bind(ip, port);
 
     // listen 소켓 생성
-    Listen(maxSessionCount);
+    Listen();
 
     //=================================================================================================================
     // 3. 서버 가동에 필요한 정보를 로드
@@ -293,10 +293,10 @@ void CGameServer::Bind(unsigned long ip, UINT16 port)
     }
 }
 
-void CGameServer::Listen(int somaxconn)
+void CGameServer::Listen(void)
 {
     // listen()
-    int retval = listen(listenSocket, somaxconn);
+    int retval = listen(listenSocket, SOMAXCONN_HINT(65535));
     if (retval == SOCKET_ERROR)
     {
         std::cout << "Error : Listen(), " << WSAGetLastError() << "\n";

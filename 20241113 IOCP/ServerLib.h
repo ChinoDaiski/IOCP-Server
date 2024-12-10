@@ -48,7 +48,7 @@ private:
     void CreateIOCP(int runningThreadCount);
     void Bind(unsigned long ip, UINT16 port);
     void SetOptions(bool bNagleOn);
-    void Listen(int somaxconn);
+    void Listen(void);
 
 private:
     void InitResource(int maxSessionCount);
