@@ -25,11 +25,14 @@ public:
 
     // 서버 시작/종료
     virtual bool Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount,
-        bool nagleOption, int maxSessionCount) = 0;
+        bool nagleOption, int maxSessionCount, int pendingAcceptCount) = 0;     // maxSessionCount은 최대 세션 갯수, pendingAcceptCount는 accept를 대기하는 acceptex 호출 세션 갯수
     virtual void Stop() = 0;
 
+    // 모니터링 관련
+    int GetConnectedSessionCount();   // 현재 서버에 접속된 세션의 갯수를 반환
+    int GetPendingSessionCount();     // 현재 AcceptEx를 호출한 세션의 갯수를 반환
+
     // 세션 관리
-    virtual int GetSessionCount() const = 0;    // 현재 서버에 접속된 세션의 갯수를 반환
     virtual bool Disconnect(UINT64 sessionID) = 0;  // 컨텐츠에서 먼저 삭제하고 netlib에 세션을 삭제해야할 때 호출하는 함수
     virtual void SendPacket(UINT64 sessionID, CPacket* packet) = 0; // 특정 세션에 직렬화 버퍼를 보낼 때 사용하는 함수
 
@@ -47,6 +50,10 @@ public:
     // recv, send 를 실제로 하는 함수
     void RecvPost(CSession* pSession);
     void SendPost(CSession* pSession);
+    bool AcceptPost(CSession* pSession);
+
+    // SOCKADDR_IN 로 부터 IP, Port를 추출하는 함수
+    void extractIPPort(const SOCKADDR_IN& clientAddr, std::string& connectedIP, UINT16& connectedPort);
 
     // 억셉트/워커 스레드, static 함수이기 떄문에 인자로 객체를 집어넣음. 함수 자체는 일종의 틀로 보면 됨.
     static unsigned int WINAPI WorkerThread(void* pArg);
@@ -55,8 +62,10 @@ public:
     // 모니터링 관련
     const FrameStats& GetStatusTPS(void) const { return statusTPS; }
     void ClearTPSValue(void);   // TPS 측정관련 변수들을 모두 0으로 초기화 하면서 statusTPS에 값을 넣는 함수.
-
     UINT32 GetDisconnectedSessionCnt(void) const { return disconnectedSessionCnt; }
+
+    // AcceptEx 시도 여부 확인 함수
+    bool IsAcceptExUnderLimit(void);
 
 private:
     // 각 행동이 초당 얼마나 일어나는지 확인하는 변수 
@@ -85,4 +94,8 @@ protected:
 protected:
     UINT32 curSessionCnt = 0;   // 현재 접속중인 세션 수
     UINT32 disconnectedSessionCnt = 0;  // 중간에 끊어진 세션수
+
+protected:
+    UINT32 maxPendingSessionCnt;     // 최대 Accept 예약한 세션 갯수
+    UINT32 curPendingSessionCnt;     // 현재 Accept 예약한 세션 갯수
 };

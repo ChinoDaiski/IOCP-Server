@@ -133,6 +133,59 @@ void CLanServer::SendPost(CSession* pSession)
     }
 }
 
+bool CLanServer::AcceptPost(CSession* pSession)
+{ 
+    // 1) 새 소켓 생성
+    pSession->sock = WSASocket(
+        AF_INET, SOCK_STREAM, IPPROTO_TCP,
+        nullptr, 0,
+        WSA_FLAG_OVERLAPPED
+    );
+
+    if (pSession->sock == INVALID_SOCKET)
+        return false;
+
+    // socket과 CSession을 CompletionPort 객체와 연결
+    CreateIoCompletionPort(
+        (HANDLE)pSession->sock,
+        hIOCP,
+        (ULONG_PTR)pSession,
+        0
+    );
+
+    if (hIOCP == INVALID_HANDLE_VALUE)
+    {
+        printf("[에러] CreateIoCompletionPort()함수 실패: %d\n", GetLastError());
+        return false;
+    }
+
+    // 2) AcceptEx 호출
+    DWORD recvBytes = 0;
+    BOOL ok = AcceptEx(
+        listenSocket,               // 듣고 있던 리슨 소켓
+        pSession->sock,             // AcceptEx가 새로 생성한(위에서 만든) 소켓
+        pSession->acceptBuffer,     // 리모트/로컬 주소를 받을 버퍼
+        0,                          // 첫 데이터 수신을 하지 않으므로 0
+        sizeof(SOCKADDR_IN) + 16,   // 로컬 주소 공간 크기
+        sizeof(SOCKADDR_IN) + 16,   // 리모트 주소 공간 크기
+        &recvBytes,                 // 동기 모드라면 수신된 바이트, 비동기면 무시
+        &pSession->overlappedAccept // OVERLAPPED 구조체
+    );
+
+    // ok == true : AcceptEx가 즉시 완료된 경우
+    // ok == false && WSAGetLastError() == ERROR_IO_PENDING : 비동기 완료 대기 상태, GQCS로 완료통지 처리 준비 완료
+
+    // 그 외의 경우
+    if (!ok && WSAGetLastError() != ERROR_IO_PENDING)
+    {
+        // 연결이 실패 했으므로 false 반환
+        // 소켓 닫기 및 뒤처리는 returnSession에서 진행 예정
+        return false;
+    }
+
+    return true;
+}
+
 unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
 {
     CLanServer* pThis = (CLanServer*)pArg;
@@ -159,18 +212,18 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
         // 반환값으로 몇 바이트를 받았는지, 어떤 키인지, 어떤 오버랩 구조체를 사용했는지를 알려준다.
         retval = GetQueuedCompletionStatus(pThis->hIOCP, &transferredDataLen, (PULONG_PTR)&pSession, &pOverlapped, INFINITE);
 
-        Logging(pSession, ACTION::WORKER_AFTER_GQCS);
-
         error = WSAGetLastError();
+        if (pSession)
+        {
+            Logging(pSession, ACTION::WORKER_AFTER_GQCS);
 
-        Logging(pSession, error);
+            Logging(pSession, error);
 
-        if(pOverlapped == &pSession->overlappedRecv)
-            Logging(pSession, ACTION::WORKER_RECV_COMPLETION_NOTICE);
-        else if(pOverlapped == &pSession->overlappedSend)
-            Logging(pSession, ACTION::WORKER_SEND_COMPLETION_NOTICE);
-
-
+            if (pOverlapped == &pSession->overlappedRecv)
+                Logging(pSession, ACTION::WORKER_RECV_COMPLETION_NOTICE);
+            else if (pOverlapped == &pSession->overlappedSend)
+                Logging(pSession, ACTION::WORKER_SEND_COMPLETION_NOTICE);
+        }
 
 
         // PQCS로 넣은 완료 통지값(0, 0, NULL)이 온 경우. 즉, 내(main 스레드)가 먼저 끊은 경우
@@ -191,7 +244,109 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 ;   // 바로 IO Count를 1 감소시키는 쪽으로 넘어가서 처리.
             }
 
-            Logging(pSession, ACTION::WORKER_LEAVE_CS1);
+            if (pSession)
+            {
+                Logging(pSession, ACTION::WORKER_LEAVE_CS1);
+            }
+        }
+
+        // 문제가 없는데 pSeesion이 nullptr인 경우, AcceptEx로 인한 완료통지이기 때문에 pOverlapped를 확인하여 세션값을 찾는다. 
+        if (!pSession)
+        {
+            pSession = reinterpret_cast<CSession*>(
+                reinterpret_cast<char*>(pOverlapped)
+                - offsetof(CSession, overlappedAccept)
+                );
+        }
+
+        // 1) AcceptEx 완료 처리
+        if (pOverlapped == &pSession->overlappedAccept)
+        {
+            // AcceptTps 1 증가
+            InterlockedIncrement(&pThis->acceptTPS);
+
+            // 주소 정보 꺼내기
+            sockaddr* localAddr = nullptr;
+            sockaddr* remoteAddr = nullptr;
+            int localLen = 0, remoteLen = 0;
+            GetAcceptExSockaddrs(
+                pSession->acceptBuffer,
+                0,
+                sizeof(SOCKADDR_IN) + 16,
+                sizeof(SOCKADDR_IN) + 16,
+                &localAddr, &localLen,
+                &remoteAddr, &remoteLen
+            );
+            SOCKADDR_IN* clientaddr = reinterpret_cast<SOCKADDR_IN*>(remoteAddr);
+
+            std::string connectedIP;
+            UINT16 connectedPort;
+            pThis->extractIPPort(*clientaddr, connectedIP, connectedPort);
+
+            // 연결 허용 검사
+            if (!pThis->OnConnectionRequest(connectedIP, connectedPort))
+            {
+                // 허용된 ip가 아닐 시 해당 소켓을 닫고, 새로 AcceptEx 시도
+                closesocket(pSession->sock);
+                pSession->sock = INVALID_SOCKET;
+
+                // AcceptEx 대기하고 있는 소켓 갯수 확인
+                if (pThis->IsAcceptExUnderLimit())
+                {
+                    // 다음 AcceptEx 준비
+                    pThis->InitSessionInfo(pSession);
+
+                    while (!pThis->AcceptPost(pSession))
+                    {
+                        closesocket(pSession->sock);
+                        pSession->sock = INVALID_SOCKET;
+
+                        pThis->InitSessionInfo(pSession);
+                    }
+                }
+
+                // 세션을 삭제할 필요 없이 소켓만 새로 할당받아 재사용하면 되기에 이렇게 처리
+                continue;
+            }
+
+            // 이 시점에선 이미 pSeesion은 Init이 된 상태
+
+            // 세션 정보 업데이트 & IOCP 등록
+
+            // 세션에 IP, Port 정보 추가
+            strcpy_s(pSession->IP, sizeof(pSession->IP), connectedIP.c_str());
+            pSession->IP[sizeof(pSession->IP) - 1] = '\0';
+
+            pSession->port = connectedPort;
+
+            // 소켓과 입출력 완료 포트 연결 - 새로 연견될 소켓을 key를 해당 소켓과 연결된 세션 구조체의 포인터로 하여 IOCP와 연결한다.
+            CreateIoCompletionPort(
+                (HANDLE)pSession->sock,
+                pThis->hIOCP,
+                (ULONG_PTR)pSession,
+                0
+            );
+
+            // send를 먼저하고 recv를 거니깐 recv를 걸기전에 다른 스레드에서 send 완료통지가 와서 스레드가 삭제되어버리는 경우가 있음.
+            // 이를 방지하기 위해 OnAccept 호출 전에 IOCount를 증가, RecvPost 이후 IOCount 감소
+            InterlockedIncrement(&pSession->IOCount);
+
+            // OnAccept 및 RecvPost 호출(recv 예약)
+            {
+                // 콘텐츠 accept 함수 생성 -> 에코가 아닌 진짜로 콘텐츠에서 뭔가 만들 때 등록 요망.
+                // OnAccept를 먼저하는 이유가 recvPost를 먼저 걸었을 때 재활용을 하게 되면 문제가 생긴다.
+                pThis->OnAccept(pSession->id);
+
+                // recv 처리, 왜 등록을 먼저하고, 이후에 WSARecv를 하냐면, 등록 전에 Recv 완료통지가 올 수 있음. 그래서 등록을 먼저함
+                pThis->RecvPost(pSession);
+            }
+
+            //UINT32 IOCount = InterlockedDecrement(&pSession->IOCount);
+
+            //// 이거 확인해보자. 가능한 경우인지 확인해야함. 만약 가능한 경우라면, 여기서 세션 재활용들어가야함.
+            //// 일단 가능한 것으로 판별됨. 로그 다 찍어서 확인해봐야할듯... 와우
+            //if (IOCount == 0)
+            //    DebugBreak();
         }
 
         // recv 완료 통지가 온 경우
@@ -315,6 +470,27 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
             // 세션 삭제
             Logging(pSession, ACTION::WORKER_RELEASE_SESSION);
             pThis->returnSession(pSession);
+            
+            // AcceptEx 대기하고 있는 소켓 갯수 확인
+            if (pThis->IsAcceptExUnderLimit())
+            {
+                // AcceptEx를 호출하는 과정이므로 curPendingSessionCnt 1 증가 이후 AcceptEx 시도
+                // 만약 AcceptEx 성공 후 curPendingSessionCnt 을 증가시키면 그 사이에 호출 횟수가 증가할 수 있음
+                // 물론 다시 세션이 끊기는 과정에서 줄어들긴 하겠지만 여기서 증가시킴으로서 AcceptEx 호출 횟수가 증가할 위험을 줄임
+                InterlockedIncrement(&pThis->curPendingSessionCnt);
+
+                // 만약 AcceptEx 건 소켓 갯수가 설정한 값보다 적다면 다음 AcceptEx 준비
+                CSession* pNewSession = pThis->FetchSession();
+                pThis->InitSessionInfo(pNewSession);
+
+                while (!pThis->AcceptPost(pNewSession))
+                {
+                    closesocket(pNewSession->sock);
+                    pNewSession->sock = INVALID_SOCKET;
+
+                    pThis->InitSessionInfo(pNewSession);
+                }
+            }
         }
     }
 
@@ -323,7 +499,7 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
 
 
 // SOCKADDR_IN 구조체에서 IP, PORT 값을 추출하는 함수
-void extractIPPort(const SOCKADDR_IN& clientAddr, std::string& connectedIP, UINT16& connectedPort)
+void CLanServer::extractIPPort(const SOCKADDR_IN& clientAddr, std::string& connectedIP, UINT16& connectedPort)
 {
     char pAddrBuf[INET_ADDRSTRLEN];
     if (inet_ntop(AF_INET, &clientAddr, pAddrBuf, sizeof(pAddrBuf)) == NULL) {
@@ -340,95 +516,95 @@ void extractIPPort(const SOCKADDR_IN& clientAddr, std::string& connectedIP, UINT
 
 unsigned int __stdcall CLanServer::AcceptThread(void* pArg)
 {
-    CLanServer* pThis = (CLanServer*)pArg;
+    //CLanServer* pThis = (CLanServer*)pArg;
 
-    DWORD curThreadID = GetCurrentThreadId();
+    //DWORD curThreadID = GetCurrentThreadId();
 
-    // 데이터 통신에 사용할 변수
-    SOCKET client_sock;
-    SOCKADDR_IN clientaddr;
+    //// 데이터 통신에 사용할 변수
+    //SOCKET client_sock;
+    //SOCKADDR_IN clientaddr;
 
-    int addrlen;
+    //int addrlen;
 
-    while (true)
-    {
-        // 백로그 큐에서 소켓 정보 추출
-        addrlen = sizeof(clientaddr);
-        client_sock = accept(pThis->listenSocket, (SOCKADDR*)&clientaddr, &addrlen);
-        if (client_sock == INVALID_SOCKET) {
-            int error = WSAGetLastError();
-            std::cout << "Error : accept failed - " << error << "\n";
-            DebugBreak();
-        }
-
-
-        // AcceptTps 1 증가
-        InterlockedIncrement(&pThis->acceptTPS);
+    //while (true)
+    //{
+    //    // 백로그 큐에서 소켓 정보 추출
+    //    addrlen = sizeof(clientaddr);
+    //    client_sock = accept(pThis->listenSocket, (SOCKADDR*)&clientaddr, &addrlen);
+    //    if (client_sock == INVALID_SOCKET) {
+    //        int error = WSAGetLastError();
+    //        std::cout << "Error : accept failed - " << error << "\n";
+    //        DebugBreak();
+    //    }
 
 
-
-        // 추출한 소켓의 접속 정보에서 IP, PORT 값 추출
-        std::string connectedIP;
-        UINT16 connectedPort;
-        extractIPPort(clientaddr, connectedIP, connectedPort);
+    //    // AcceptTps 1 증가
+    //    InterlockedIncrement(&pThis->acceptTPS);
 
 
-        // 접속한 클라이언트가 현재 접속 가능한지 여부 판단
-        if (!pThis->OnConnectionRequest(connectedIP, connectedPort))
-            // 접속 불가하다면 continue
-            continue;
 
-        //==============================================================================================
-        // 세션 생성
-        //==============================================================================================
-
-        // 소켓 정보 구조체 뽑아오기
-        CSession* pSession = pThis->FetchSession(); // 뽑아오면서 ID는 이미 부여된 상태
-        
-
-        // 세션에 소켓, IP, Port 정보 추가
-        pSession->sock = client_sock;
-
-        strcpy_s(pSession->IP, sizeof(pSession->IP), connectedIP.c_str());
-        pSession->IP[sizeof(pSession->IP) - 1] = '\0';
-
-        pSession->port = connectedPort;
+    //    // 추출한 소켓의 접속 정보에서 IP, PORT 값 추출
+    //    std::string connectedIP;
+    //    UINT16 connectedPort;
+    //    pThis->extractIPPort(clientaddr, connectedIP, connectedPort);
 
 
-        Logging(pSession, ACTION::ACCEPT_AFTER_FETCH);
+    //    // 접속한 클라이언트가 현재 접속 가능한지 여부 판단
+    //    if (!pThis->OnConnectionRequest(connectedIP, connectedPort))
+    //        // 접속 불가하다면 continue
+    //        continue;
 
-        // 세션 정보 초기화
-        pThis->InitSessionInfo(pSession);
+    //    //==============================================================================================
+    //    // 세션 생성
+    //    //==============================================================================================
 
-        Logging(pSession, ACTION::ACCEPT_AFTER_INIT);
+    //    // 소켓 정보 구조체 뽑아오기
+    //    CSession* pSession = pThis->FetchSession(); // 뽑아오면서 ID는 이미 부여된 상태
+    //    
+
+    //    // 세션에 소켓, IP, Port 정보 추가
+    //    pSession->sock = client_sock;
+
+    //    strcpy_s(pSession->IP, sizeof(pSession->IP), connectedIP.c_str());
+    //    pSession->IP[sizeof(pSession->IP) - 1] = '\0';
+
+    //    pSession->port = connectedPort;
 
 
-        // 소켓과 입출력 완료 포트 연결 - 새로 연견될 소켓을 key를 해당 소켓과 연결된 세션 구조체의 포인터로 하여 IOCP와 연결한다.
-        CreateIoCompletionPort((HANDLE)pSession->sock, pThis->hIOCP, (ULONG_PTR)pSession, 0);
+    //    Logging(pSession, ACTION::ACCEPT_AFTER_FETCH);
+
+    //    // 세션 정보 초기화
+    //    pThis->InitSessionInfo(pSession);
+
+    //    Logging(pSession, ACTION::ACCEPT_AFTER_INIT);
 
 
-        // send를 먼저하고 recv를 거니깐 recv를 걸기전에 다른 스레드에서 send 완료통지가 와서 스레드가 삭제되어버리는 경우가 있음.
-        // 이를 방지하기 위해 OnAccept 호출 전에 IOCount를 증가, RecvPost 이후 IOCount 감소
-        InterlockedIncrement(&pSession->IOCount);
+    //    // 소켓과 입출력 완료 포트 연결 - 새로 연견될 소켓을 key를 해당 소켓과 연결된 세션 구조체의 포인터로 하여 IOCP와 연결한다.
+    //    CreateIoCompletionPort((HANDLE)pSession->sock, pThis->hIOCP, (ULONG_PTR)pSession, 0);
 
-        {
-            // 콘텐츠 accept 함수 생성 -> 에코가 아닌 진짜로 콘텐츠에서 뭔가 만들 때 등록 요망.
-            // OnAccept를 먼저하는 이유가 recvPost를 먼저 걸었을 때 재활용을 하게 되면 문제가 생긴다.
-            pThis->OnAccept(pSession->id);
 
-            Logging(pSession, ACTION::ACCEPT_ON_ACCEPT);
+    //    // send를 먼저하고 recv를 거니깐 recv를 걸기전에 다른 스레드에서 send 완료통지가 와서 스레드가 삭제되어버리는 경우가 있음.
+    //    // 이를 방지하기 위해 OnAccept 호출 전에 IOCount를 증가, RecvPost 이후 IOCount 감소
+    //    InterlockedIncrement(&pSession->IOCount);
 
-            // recv 처리, 왜 등록을 먼저하고, 이후에 WSARecv를 하냐면, 등록 전에 Recv 완료통지가 올 수 있음. 그래서 등록을 먼저함
-            pThis->RecvPost(pSession);
-        }
+    //    {
+    //        // 콘텐츠 accept 함수 생성 -> 에코가 아닌 진짜로 콘텐츠에서 뭔가 만들 때 등록 요망.
+    //        // OnAccept를 먼저하는 이유가 recvPost를 먼저 걸었을 때 재활용을 하게 되면 문제가 생긴다.
+    //        pThis->OnAccept(pSession->id);
 
-        UINT32 IOCount = InterlockedDecrement(&pSession->IOCount);
+    //        Logging(pSession, ACTION::ACCEPT_ON_ACCEPT);
 
-        Logging(pSession, ACTION::ACCEPT_RECVPOST);
+    //        // recv 처리, 왜 등록을 먼저하고, 이후에 WSARecv를 하냐면, 등록 전에 Recv 완료통지가 올 수 있음. 그래서 등록을 먼저함
+    //        pThis->RecvPost(pSession);
+    //    }
 
-        if (IOCount == 0)
-            pThis->returnSession(pSession);
-    }
+    //    UINT32 IOCount = InterlockedDecrement(&pSession->IOCount);
+
+    //    Logging(pSession, ACTION::ACCEPT_RECVPOST);
+
+    //    if (IOCount == 0)
+    //        pThis->returnSession(pSession);
+    //}
 
     return 0;
 }
@@ -441,4 +617,21 @@ void CLanServer::ClearTPSValue(void)
 
     statusTPS.CurPoolCount = stSessionIndex.GetCurPoolCount();
     statusTPS.MaxPoolCount = stSessionIndex.GetMaxPoolCount();
+}
+
+bool CLanServer::IsAcceptExUnderLimit(void)
+{
+    return InterlockedExchangeAdd(&curPendingSessionCnt, 0) < maxPendingSessionCnt;
+}
+
+int CLanServer::GetConnectedSessionCount()
+{
+    // 해당 값을 interlocked 없이 가져오기에 정확하지 않음. 감시용도로 대략적인 측정시 사용
+    return static_cast<int>(curSessionCnt);
+}
+
+int CLanServer::GetPendingSessionCount()
+{
+    // 해당 값을 interlocked 없이 가져오기에 정확하지 않음. 감시용도로 대략적인 측정시 사용
+    return static_cast<int>(curPendingSessionCnt);
 }

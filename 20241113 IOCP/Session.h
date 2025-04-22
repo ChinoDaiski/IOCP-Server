@@ -83,8 +83,10 @@ public:
     CRingBuffer recvQ;
     CPacketQueue sendQ;
 
-    OVERLAPPED overlappedRecv;
-    OVERLAPPED overlappedSend;
+    OVERLAPPED overlappedRecv;      // recv 오버랩 구조체
+    OVERLAPPED overlappedSend;      // send 오버랩 구조체
+    OVERLAPPED overlappedAccept;    // accept 오버랩 구조체 
+    char acceptBuffer[(sizeof(SOCKADDR_IN) + 16) * 2];  // GetAcceptExSockaddrs 호출 시 사용할 주소 버퍼
 
     UINT64 id;
 

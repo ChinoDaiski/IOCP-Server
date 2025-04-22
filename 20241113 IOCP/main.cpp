@@ -48,7 +48,7 @@ int main(void)
     CGameServer GameServer;
 
     // IP 입력시 inet_addr(ip); <- 원하는 IP를 문자열로 또는 htonl(INADDR_ANY)를 호출해서 모든 NIC으로부터 데이터를 받을 수 도 있다.
-    GameServer.Start(htonl(INADDR_ANY), SERVERPORT, 8, 4, true, 20000);
+    GameServer.Start(htonl(INADDR_ANY), SERVERPORT, 8, 4, true, 20000, 100);
 
     // 모니터 스레드 생성
     HANDLE hMonitorThread;   // 모니터 스레드 핸들값
@@ -120,7 +120,8 @@ unsigned int WINAPI MonitorThread(void* pArg)
         // 메모리 풀 관련 출력
         PrintMemoryPoolValue(status.CurPoolCount, status.MaxPoolCount);
 
-        std::cout << "\nCurrent SessionCount : " << pThis->GetSessionCount() << "\n";
+        std::cout << "\Pending SessionCount : " << pThis->GetPendingSessionCount() << "\n";
+        std::cout << "Current SessionCount : " << pThis->GetConnectedSessionCount() << "\n";
         std::cout << "Disconnected SessionCount : " << pThis->GetDisconnectedSessionCnt() << "\n";
         std::cout << "Packet Use Count : " << CPacket::usePacketCnt << "\n\n";
 
@@ -132,6 +133,3 @@ unsigned int WINAPI MonitorThread(void* pArg)
 
     return 0;
 }
-
-
-

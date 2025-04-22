@@ -8,7 +8,7 @@
 #include "Protocol.h"
 #include "Packet.h"
 
-bool CGameServer::Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, int maxSessionCount)
+bool CGameServer::Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, int maxSessionCount, int pendingAcceptCount)
 {
     // 타이머 인터벌을 1ms로 줄임. 서버의 퀀텀이 길기에 타이머 인터벌을 줄여 비동기 작업의 지연이 퀀텀이 길어서 확인되까지 걸리는 시간을 줄임으로서 낭비하는 시간이 없어져 성능이 올라간다고 추측.
     // 아무튼 안했을 때 보다 했을 때 서버에서 성능이 30%이상 올라가는 것을 확인. 물론 에코인 경우지만...
@@ -51,6 +51,12 @@ bool CGameServer::Start(unsigned long ip, int port, int workerThreadCount, int r
     //=================================================================================================================
 
     CreateThreadPool(workerThreadCount);
+
+    //=================================================================================================================
+    // 5. pendingAcceptCount 갯수만큼 소켓 생성 후 acceptex 호출
+    //=================================================================================================================
+
+    ReserveAcceptSocket(pendingAcceptCount);
 
     return true;  // 성공 시 true 반환
 }
@@ -302,6 +308,23 @@ void CGameServer::Listen(void)
         std::cout << "Error : Listen(), " << WSAGetLastError() << "\n";
         DebugBreak();
     }
+
+    // 리슨 소켓을 IOCP에 등록. AcceptEx를 사용하기 위해선 리슨 소켓을 IOCP에 등록해줘야함
+    HANDLE hResult = CreateIoCompletionPort(
+        (HANDLE)listenSocket,  // listen() 한 소켓 핸들
+        hIOCP,                 // 기존 hIOCP 핸들에 연결
+        (ULONG_PTR)0,          // CompletionKey (0 혹은 식별용 값)
+        0                      // 스레드 풀 크기 지정 (0 으로 두면 기본값)
+    );
+
+    // 리턴값 검사
+    if (hResult == NULL) {
+        DWORD err = GetLastError();
+        std::cout << "[에러] CreateIoCompletionPort 실패: " << err << "\n";
+        // 필요 시 프로그램 종료 또는 복구 로직
+
+        DebugBreak();
+    }
 }
 
 void CGameServer::InitResource(int maxSessionCount)
@@ -315,8 +338,6 @@ void CGameServer::InitResource(int maxSessionCount)
     {
         stSessionIndex.push(i);
     }
-
-
 
     isServerMaintrenanceMode = true;
 
@@ -337,6 +358,35 @@ void CGameServer::CreateThreadPool(int workerThreadCount)
     for (UINT8 i = 0; i < workerThreadCount; ++i)
     {
         hThreads[i + 1] = (HANDLE)_beginthreadex(NULL, 0, WorkerThread, this, 0, (unsigned int*)&dwThreadID);
+    }
+}
+
+void CGameServer::ReserveAcceptSocket(int pendingAcceptCount)
+{
+    maxPendingSessionCnt = pendingAcceptCount;
+
+    // 초기 동시 대기 세션 수만큼 PostAccept
+    for (int i = 0; i < pendingAcceptCount; ++i)
+    {
+        CSession* pSession = FetchSession();
+        InitSessionInfo(pSession);   // 필요한 초기화만
+
+        // 중간에 AcceptEx 실패시
+        if (!AcceptPost(pSession))
+        {
+            // 정리 후 다시 시도
+            returnSession(pSession);
+            --i;
+
+            continue;
+        }
+
+        // AcceptEx 호출에 성공했으므로 IOCount를 1 증가. Accept 완료통지 처리 이후 차감될 예정
+        //InterlockedIncrement(&pSession->IOCount);
+
+        // 이 시점에서 curPendingSessionCnt는 워커스레드에서 재접이 일어날 수 있기에 interlocked를 사용
+        // 해당 값은 data race 우려가 있으므로 ineterlock 사용
+        InterlockedIncrement(&curPendingSessionCnt);
     }
 }
 
@@ -453,6 +503,9 @@ void CGameServer::returnSession(CSession* pSession)
 
     // 세션을 삭제했으니 이후에 콘텐츠에게 세션이 삭제되었음을 알리는 코드가 들어감
     OnRelease(pSession->id);
+
+    // 세션이 삭제되었으므로 curPendingSessionCnt 1 감소
+    InterlockedDecrement(&curPendingSessionCnt);
 }
 
 void CGameServer::InitSessionInfo(CSession* pSession)
@@ -460,6 +513,9 @@ void CGameServer::InitSessionInfo(CSession* pSession)
     // send/recv용 오버랩 구조체 초기화
     ZeroMemory(&pSession->overlappedRecv, sizeof(pSession->overlappedRecv));
     ZeroMemory(&pSession->overlappedSend, sizeof(pSession->overlappedSend));
+    ZeroMemory(&pSession->overlappedAccept, sizeof(pSession->overlappedAccept));
+
+    ZeroMemory(&pSession->acceptBuffer, sizeof(pSession->acceptBuffer));
 
     // 삭제를 위한 IO Count 부여, 초기화 할 시기로 아직 등록도 전이니 0으로 설정
     UINT32 IOCount = InterlockedExchange(&pSession->IOCount, 0);

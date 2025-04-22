@@ -73,7 +73,7 @@ private:
 
 class CPacket;
 
-#define MAX_PACKET_QUEUE_SIZE 10000
+#define MAX_PACKET_QUEUE_SIZE 1000
 
 class CPacketQueue
 {

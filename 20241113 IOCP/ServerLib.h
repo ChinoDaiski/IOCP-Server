@@ -21,11 +21,8 @@ class CLanServer;
 
 class CGameServer : public CLanServer {
 public:
-    bool Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, int maxSessionCount) override;
+    bool Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, int maxSessionCount, int pendingAcceptCount) override;
     void Stop(void) override;
-
-    // 해당 값을 그냥 가져오기에 정확하지 않음. 감시용도로 대략적인 측정시 사용
-    int GetSessionCount() const override { return static_cast<int>(curSessionCnt); }
 
     // 컨텐츠에서 netlib에게 세션을 종료하라고 알려주는 함수
     bool Disconnect(UINT64 sessionID) override;
@@ -54,6 +51,9 @@ private:
 
 private:
     void CreateThreadPool(int workerThreadCount);
+
+private:
+    void ReserveAcceptSocket(int pendingAcceptCount);
 
 private:
     void SetTCPSendBufSize(SOCKET socket, UINT32 size);
