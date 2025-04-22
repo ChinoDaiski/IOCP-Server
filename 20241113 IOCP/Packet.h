@@ -1,9 +1,7 @@
 #pragma once
 
-#include <Windows.h>
 #include <cstring>
 #include <type_traits>
-//#include "CustomException.h"
 
 class CPacket
 {
@@ -51,6 +49,7 @@ public:
 	// Parameters: 없음.
 	// Return: (char *)버퍼 포인터.
 	//////////////////////////////////////////////////////////////////////////
+	char* GetFrontBufferPtr(void) { return m_chpBuffer + m_iFront; }
 	char* GetBufferPtr(void) { return m_chpBuffer; }
 
 	//////////////////////////////////////////////////////////////////////////
@@ -81,10 +80,9 @@ public:
 		// 패킷에 할당되어 있는 최대 사이즈 보다 더 많은 값이 들어가는지 검사
 		if ((m_iRear + sizeof(T)) > m_iBufferSize)
 		{
-			/*StackTraceLogger sw;
-			sw.ShowCallstack();
-			throw std::runtime_error("패킷에 할당되어 있는 최대 사이즈 보다 더 많은 값이 들어가는지 검사");*/
-			DebugBreak();
+			//StackTraceLogger sw;
+			//sw.ShowCallstack();
+			//throw std::runtime_error("패킷에 할당되어 있는 최대 사이즈 보다 더 많은 값이 들어가는지 검사");
 		}
 
 		if (!std::is_arithmetic<T>::value)
@@ -120,10 +118,9 @@ public:
 		// 넣어진 값 이상으로 뺴려고 시도
 		if ((m_iFront + sizeof(T)) > m_iRear)
 		{
-			/*StackTraceLogger sw;
-			sw.ShowCallstack();
-			throw std::runtime_error("넣어진 값 이상으로 뺴려고 시도");*/
-			DebugBreak();
+			//StackTraceLogger sw;
+			//sw.ShowCallstack();
+			//throw std::runtime_error("넣어진 값 이상으로 뺴려고 시도");
 		}
 
 		if constexpr (!std::is_arithmetic<T>::value)
@@ -172,9 +169,19 @@ public:
 	int		PutData(char* chpSrc, int iSrcSize);
 
 
+
+	UINT16 AddRef(void);
+	UINT16 ReleaseRef(void);
+
+
 protected:
-	char m_chpBuffer[static_cast<UINT32>(en_PACKET::eBUFFER_DEFAULT)];      // 데이터 저장 배열
+	char* m_chpBuffer;      // 데이터 저장 배열
 	int m_iBufferSize;      // 버퍼의 전체 용량
 	int m_iFront;           // 현재 읽기 위치 (front)
 	int m_iRear;            // 현재 쓰기 위치 (rear)
+	short m_refCount;		// 레퍼런스 카운터
+
+
+public:
+	static UINT32 usePacketCnt;
 };

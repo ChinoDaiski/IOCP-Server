@@ -1,217 +1,129 @@
 
 #pragma once
 
-#define RINGBUFFER_SIZE 10000
+// rear가 있는 곳을 비워야 한다. 그래야 멀티스레드에서 안정적인 코드를 만들 수 있다.
 
-
-
-#include <iostream>
-#include <string>
-
-#define NOMINMAX
-#include <Windows.h>
-
-
-class CRingBuffer {
+class CRingBuffer 
+{
 public:
-    // 생성자: 버퍼 크기를 설정하고 버퍼를 초기화합니다.
-    explicit CRingBuffer(int iBufferSize = RINGBUFFER_SIZE)
-        : m_iCapacity(iBufferSize), m_iReadPos(0), m_iWritePos(0), m_iSize(0) {
-        m_pBuffer = new char[m_iCapacity];
+    explicit CRingBuffer(UINT64 iBufferSize = 2000);
+    ~CRingBuffer();
 
-        InitializeCriticalSection(&m_cs);
+public:
+    void Resize(UINT32 size);
+
+    UINT32 GetBufferSize() const { return capacity; } // 실제 데이터 크기 반환
+
+    UINT32 GetUseSize() const;
+
+    UINT32 GetFreeSize() const {
+        return GetBufferSize() - GetUseSize();
     }
 
-    // 소멸자: 동적 메모리로 할당한 버퍼를 해제합니다.
-    ~CRingBuffer() {
-        delete[] m_pBuffer;
-        DeleteCriticalSection(&m_cs);
+    int Enqueue(const char* chpData, UINT32 iSize);
+    int Dequeue(char* chpDest, UINT32 iSize);
+
+    int Peek(char* chpDest, UINT32 iSize) const;
+    void ClearBuffer(void);
+
+    int DirectEnqueueSize() const;
+    int DirectDequeueSize() const;
+    UINT32 DirectEnqueueSize(UINT32 readPos, UINT32 writePos) const;
+    UINT32 DirectDequeueSize(UINT32 readPos, UINT32 writePos) const;
+
+    int MoveRear(int iSize);
+    int MoveFront(int iSize);
+
+    char* GetFrontBufferPtr() { return &buffer[readPos]; }
+    char* GetRearBufferPtr() { return &buffer[writePos]; }
+    char* GetBufferPtr() { return &buffer[0]; }
+    int GetBufferCapacity() { return capacity - 1; }
+
+    // 반환값으로 만들어진 WSABUF 갯수를 반환.
+    int makeWSASendBuf(LPWSABUF wsaBuf);
+    int makeWSARecvBuf(LPWSABUF wsaBuf);
+
+    UINT32 GetReadPos(void) { return readPos; }
+    UINT32 GetWritePos(void) { return writePos; }
+
+public:
+    UINT32 mod(UINT32 val) const {
+        return val % capacity;       // 링버퍼의 순환 인덱스 계산
     }
 
-    // 인덱스를 링 버퍼의 유효 범위 내로 감싸주는 함수
-    int GetWrappedIndex(int index) const {
-        return index % m_iCapacity;
+    UINT32 nextPos(UINT32 pos) const {
+        return mod(pos + 1);         // 다음 위치 계산
     }
 
-    // 버퍼 크기를 조정하는 함수
-    void Resize(int newSize) {
-        if (newSize <= 0) // 유효하지 않은 크기면 함수 종료
-            return;
-
-        // 새 버퍼 크기가 현재 데이터 크기보다 작으면 오류 발생
-        if (m_iSize > newSize) {
-            //DebugBreak();
-            //throw std::runtime_error("Resize error: New buffer size is too small to hold existing data.");
-        }
-
-        char* newBuffer = new char[newSize]; // 새 버퍼 생성
-
-        // 기존 데이터가 있으면 새 버퍼로 복사
-        if (m_iSize > 0) {
-            // 데이터가 연속된 경우
-            if (m_iReadPos < m_iWritePos) {
-                memcpy(newBuffer, m_pBuffer + m_iReadPos, m_iSize);
-            }
-            // 데이터가 나누어진 경우
-            else {
-                int firstPartSize = m_iCapacity - m_iReadPos;
-                memcpy_s(newBuffer, firstPartSize, m_pBuffer + m_iReadPos, firstPartSize);
-                memcpy_s(newBuffer + firstPartSize, m_iWritePos, m_pBuffer, m_iWritePos);
-            }
-        }
-
-        delete[] m_pBuffer; // 기존 버퍼 삭제
-
-        m_pBuffer = newBuffer; // 새 버퍼 설정
-        m_iCapacity = newSize; // 버퍼 용량 업데이트
-
-        m_iReadPos = 0; // 새로운 front 설정
-        m_iWritePos = m_iSize; // 새로운 rear 설정
+    bool isFull(UINT32 r, UINT32 w) const {
+        return nextPos(w) == r;      // 가득 찬 상태 확인
     }
 
-    // 버퍼의 총 용량을 반환합니다.
-    int GetBufferSize(void) {
-        return m_iCapacity;
+    bool isEmpty(UINT32 r, UINT32 w) const {
+        return r == w;               // 비어 있는 상태 확인
     }
-
-    // 현재 사용 중인 버퍼의 크기를 반환합니다.
-    int GetUseSize(void) {
-        return m_iSize;
-    }
-
-    // 현재 사용 가능한 버퍼의 크기를 반환합니다.
-    int GetFreeSize(void) {
-        return m_iCapacity - m_iSize;
-    }
-
-    // 데이터를 버퍼에 추가하는 함수
-    int Enqueue(const char* chpData, int iSize) {
-
-        EnterCriticalSection(&m_cs);
-
-        if (GetFreeSize() < iSize) {
-            iSize = GetFreeSize(); // 남은 용량만큼만 데이터 추가
-        }
-
-        int firstPart = std::min(iSize, m_iCapacity - m_iWritePos);
-        int secondPart = iSize - firstPart;
-
-        memcpy(m_pBuffer + m_iWritePos, chpData, firstPart);
-        memcpy(m_pBuffer, chpData + firstPart, secondPart);
-
-        m_iWritePos = GetWrappedIndex(m_iWritePos + iSize); // 새로운 rear 위치 설정
-        m_iSize += iSize; // 현재 사용 중인 버퍼 크기 업데이트
-
-        LeaveCriticalSection(&m_cs);
-
-        return iSize;
-    }
-
-    // 버퍼에서 데이터를 제거하는 함수
-    int Dequeue(char* chpDest, int iSize) {
-
-
-        if (m_iSize < iSize) {
-            iSize = m_iSize; // 현재 사용 중인 용량만큼만 데이터 제거
-        }
-
-        int firstPart = std::min(iSize, m_iCapacity - m_iReadPos);
-        int secondPart = iSize - firstPart;
-
-        memcpy(chpDest, m_pBuffer + m_iReadPos, firstPart);
-        memcpy(chpDest + firstPart, m_pBuffer, secondPart);
-
-        m_iReadPos = GetWrappedIndex(m_iReadPos + iSize); // 새로운 front 위치 설정
-
-        EnterCriticalSection(&m_cs);
-        m_iSize -= iSize; // 현재 사용 중인 버퍼 크기 업데이트
-        LeaveCriticalSection(&m_cs);
-
-        return iSize;
-    }
-
-    // 데이터를 제거하지 않고 버퍼의 앞부분을 확인하는 함수
-    int Peek(char* chpDest, int iSize) {
-        if (m_iSize < iSize) {
-            iSize = m_iSize; // 현재 사용 중인 용량만큼만 데이터 확인
-        }
-
-        int firstPart = std::min(iSize, m_iCapacity - m_iReadPos);
-        int secondPart = iSize - firstPart;
-
-        memcpy_s(chpDest, firstPart, m_pBuffer + m_iReadPos, firstPart);
-        memcpy_s(chpDest + firstPart, secondPart, m_pBuffer, secondPart);
-
-        return iSize;
-    }
-
-    // 버퍼를 비우는 함수
-    void ClearBuffer(void) {
-        m_iReadPos = 0;
-        m_iWritePos = 0;
-        m_iSize = 0;
-    }
-
-    // 현재 쓰기 위치에서 직접 추가할 수 있는 크기를 반환합니다.
-    int DirectEnqueueSize(void) {
-        if (m_iReadPos > m_iWritePos)
-            return m_iReadPos - m_iWritePos;
-        else
-            return m_iCapacity - m_iWritePos;
-    }
-
-    // 현재 읽기 위치에서 직접 제거할 수 있는 크기를 반환합니다.
-    int DirectDequeueSize(void) {
-        if (m_iReadPos < m_iWritePos)
-            return m_iWritePos - m_iReadPos;
-        else
-            return m_iCapacity - m_iReadPos;
-    }
-
-    // 쓰기 위치를 이동시키는 함수 (데이터를 추가)
-    inline int MoveRear(int iSize) {
-        int moveSize = std::min(iSize, GetFreeSize());
-        m_iWritePos = GetWrappedIndex(m_iWritePos + moveSize);
-        m_iSize += moveSize;
-        return moveSize;
-    }
-
-    // 읽기 위치를 이동시키는 함수 (데이터를 제거)
-    inline int MoveFront(int iSize) {
-        int moveSize = std::min(iSize, GetUseSize());
-        m_iReadPos = GetWrappedIndex(m_iReadPos + moveSize);
-        m_iSize -= moveSize;
-        return moveSize;
-    }
-
-    // 버퍼의 front 부분의 포인터를 반환합니다.
-    char* GetFrontBufferPtr(void) {
-        return m_pBuffer + m_iReadPos;
-    }
-
-    // 버퍼의 rear 부분의 포인터를 반환합니다.
-    char* GetRearBufferPtr(void) {
-        return m_pBuffer + m_iWritePos;
-    }
-
-    // 버퍼 포인터 반환
-    char* GetBufferPtr(void)
-    {
-        return m_pBuffer;
-    }
-    // 버퍼의 크기 반환
-    int GetBufferCapacity(void)
-    {
-        return m_iCapacity;
-    }
-
 
 private:
-    char* m_pBuffer;    // 링버퍼의 데이터 저장 배열
-    int m_iCapacity;    // 버퍼의 전체 용량
-    int m_iReadPos;     // 현재 읽기 위치 (front)
-    int m_iWritePos;    // 현재 쓰기 위치 (rear)
-    int m_iSize;        // 현재 사용 중인 데이터의 크기
+    char* buffer{ nullptr };           // 버퍼 저장 공간
+    UINT32 readPos{ 0 };                 // 읽기 위치
+    UINT32 writePos{ 0 };                // 쓰기 위치
+    UINT32 capacity{ 0 };                // 버퍼 크기
+};
 
-    CRITICAL_SECTION m_cs;
+
+class CPacket;
+
+#define MAX_PACKET_QUEUE_SIZE 10000
+
+class CPacketQueue
+{
+public:
+    explicit CPacketQueue(void);
+    ~CPacketQueue();
+
+public:
+    void Enqueue(CPacket* pPacket);
+    void Dequeue(void);
+
+public:
+    CPacket* GetFront(void);
+    void ClearQueue(void);
+
+public:
+    bool empty(void);
+
+    // 반환값으로 만들어진 WSABUF 갯수를 반환.
+    int makeWSASendBuf(LPWSABUF wsaBuf);
+
+    // 인자로 send 완료통지에서 보낸 것을 확인한 사이즈를 받아 pPackets에서 데이터를 보낸 packet을 제거하는 함수
+    // 반환값으로 empty 여부를 반환한다.
+    void RemoveSendCompletePacket(UINT32 completeSendSize);
+
+    UINT32 GetWritePos(void) { return writePos; }
+    UINT32 GetReadPos(void) { return readPos; }
+
+
+public:
+    UINT32 mod(UINT32 val) const {
+        return val % capacity;       // 링버퍼의 순환 인덱스 계산
+    }
+
+    UINT32 nextPos(UINT32 pos) const {
+        return mod(pos + 1);         // 다음 위치 계산
+    }
+
+    bool isFull(UINT32 r, UINT32 w) const {
+        return nextPos(w) == r;      // 가득 찬 상태 확인
+    }
+
+    bool isEmpty(UINT32 r, UINT32 w) const {
+        return r == w;               // 비어 있는 상태 확인
+    }
+
+private:
+    CPacket* pPackets[MAX_PACKET_QUEUE_SIZE + 1];   // 큐 본체. 일단 100개를 사용. 아마 100개를 한번에 넘게 보관하는 경우가 없을테지만, 이건 실제 측정해보면서 최대값을 측정하여 사용
+    UINT32 readPos{ 0 };                    // 읽기 위치
+    UINT32 writePos{ 0 };                   // 쓰기 위치
+    UINT32 capacity{ MAX_PACKET_QUEUE_SIZE + 1 };   // 버퍼 크기
+    UINT32 sendCompleteDataSize{ 0 };   // send 버퍼에서 보냄을 완료한 크기
 };

@@ -1,16 +1,29 @@
 
+#include "pch.h"
 #include "Packet.h"
 #include <iostream>
+
+UINT32 CPacket::usePacketCnt = 0;
 
 CPacket::CPacket(int iBufferSize)
 {
 	m_iBufferSize = iBufferSize;
 	m_iFront = m_iRear = 0;
+
+	m_chpBuffer = new char[m_iBufferSize];
+	ZeroMemory(m_chpBuffer, m_iBufferSize);
+
+	m_refCount = 0;
+
+	InterlockedIncrement(&usePacketCnt);
 }
 
 CPacket::~CPacket()
 {
 	Clear();
+
+	delete m_chpBuffer;
+	InterlockedDecrement(&usePacketCnt);
 }
 
 void CPacket::Clear(void)
@@ -64,4 +77,14 @@ int CPacket::PutData(char* chpSrc, int iSrcSize)
 	MoveWritePos(iSrcSize);
 
 	return 0;
+}
+
+UINT16 CPacket::AddRef(void)
+{
+	return InterlockedIncrement16(&m_refCount);
+}
+
+UINT16 CPacket::ReleaseRef(void)
+{
+	return InterlockedDecrement16(&m_refCount);
 }
