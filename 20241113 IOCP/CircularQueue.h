@@ -28,6 +28,6 @@ public:
 private:
     T queue[CQSIZE];           // 큐 배열
 
-    UINT32 count;
-    UINT32 capacity;    // 큐의 최대 크기
+    UINT32 count = 0;
+    UINT32 capacity = CQSIZE;    // 큐의 최대 크기
 };

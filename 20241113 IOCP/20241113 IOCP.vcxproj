@@ -71,19 +71,19 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LibraryPath>$(MSBuildStartupDirectory)\dll;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(MSBuildStartupDirectory)\dll;$(SolutionDir)x64\Release;$(LibraryPath)</LibraryPath>
     <IncludePath>$(MSBuildStartupDirectory)\dll;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <LibraryPath>$(MSBuildStartupDirectory)\dll;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(MSBuildStartupDirectory)\dll;$(SolutionDir)x64\Release;$(LibraryPath)</LibraryPath>
     <IncludePath>$(MSBuildStartupDirectory)\dll;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LibraryPath>$(MSBuildStartupDirectory)\dll;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(MSBuildStartupDirectory)\dll;$(SolutionDir)x64\Release;$(LibraryPath)</LibraryPath>
     <IncludePath>$(MSBuildStartupDirectory)\dll;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LibraryPath>$(MSBuildStartupDirectory)\dll;$(LibraryPath)</LibraryPath>
+    <LibraryPath>$(MSBuildStartupDirectory)\dll;$(SolutionDir)x64\Release;$(LibraryPath)</LibraryPath>
     <IncludePath>$(MSBuildStartupDirectory)\dll;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -101,7 +101,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(MSBuildStartupDirectory)\dll;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSBuildStartupDirectory)\dll;$(SolutionDir)x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -124,7 +124,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(MSBuildStartupDirectory)\dll;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSBuildStartupDirectory)\dll;$(SolutionDir)x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -142,7 +142,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(MSBuildStartupDirectory)\dll;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSBuildStartupDirectory)\dll;$(SolutionDir)x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -165,12 +165,13 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>$(MSBuildStartupDirectory)\dll;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(MSBuildStartupDirectory)\dll;$(SolutionDir)x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="CircularQueue.cpp" />
     <ClCompile Include="Content.cpp" />
+    <ClCompile Include="cpuUsage.cpp" />
     <ClCompile Include="CrashDump.cpp" />
     <ClCompile Include="IServer.cpp" />
     <ClCompile Include="main.cpp" />
@@ -184,11 +185,14 @@
     <ClCompile Include="RingBuffer.cpp" />
     <ClCompile Include="ServerLib.cpp" />
     <ClCompile Include="Session.cpp" />
+    <ClCompile Include="SystemMonitor.cpp" />
+    <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CircularQueue.h" />
     <ClInclude Include="concurrent_stack.h" />
     <ClInclude Include="Content.h" />
+    <ClInclude Include="cpuUsage.h" />
     <ClInclude Include="CrashDump.h" />
     <ClInclude Include="IContent.h" />
     <ClInclude Include="MemoryPool.h" />
@@ -199,6 +203,8 @@
     <ClInclude Include="IServer.h" />
     <ClInclude Include="ServerLib.h" />
     <ClInclude Include="Session.h" />
+    <ClInclude Include="SystemMonitor.h" />
+    <ClInclude Include="Timer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

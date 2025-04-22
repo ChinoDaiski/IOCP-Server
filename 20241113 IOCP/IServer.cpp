@@ -384,10 +384,14 @@ unsigned int __stdcall CLanServer::AcceptThread(void* pArg)
 
         // 소켓 정보 구조체 뽑아오기
         CSession* pSession = pThis->FetchSession(); // 뽑아오면서 ID는 이미 부여된 상태
+        
 
         // 세션에 소켓, IP, Port 정보 추가
         pSession->sock = client_sock;
-        pSession->IP = connectedIP;
+
+        strcpy_s(pSession->IP, sizeof(pSession->IP), connectedIP.c_str());
+        pSession->IP[sizeof(pSession->IP) - 1] = '\0';
+
         pSession->port = connectedPort;
 
 

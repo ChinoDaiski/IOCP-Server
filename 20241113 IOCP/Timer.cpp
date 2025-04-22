@@ -1,17 +1,17 @@
-
 #include "pch.h"
 #include "Timer.h"
+#include <iostream>
 
-Timer::Timer(void)
+CTimer::CTimer(void)
 {
     processStartTime = std::chrono::steady_clock::now();
 }
 
-Timer::~Timer(void)
+CTimer::~CTimer(void)
 {
 }
 
-void Timer::PrintElapsedTime(void)
+void CTimer::PrintElapsedTime(void)
 {
     auto currentTime = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(currentTime - processStartTime);
@@ -25,5 +25,5 @@ void Timer::PrintElapsedTime(void)
         << days << " days  "
         << hours << " hours  "
         << minutes << " minutes  "
-        << seconds << " seconds";
+        << seconds << " seconds\n";
 }

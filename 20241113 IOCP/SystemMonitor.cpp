@@ -1,6 +1,6 @@
-
 #include "pch.h"
 #include "SystemMonitor.h"
+#include <iostream>
 
 SystemMonitor::SystemMonitor(void)
     : queryHandle(nullptr)
@@ -13,11 +13,20 @@ SystemMonitor::SystemMonitor(void)
     PdhAddCounter(queryHandle, L"\\Memory\\Available MBytes", NULL, &availableMemory);
     PdhAddCounter(queryHandle, L"\\Memory\\Pool Nonpaged Bytes", NULL, &memoryPoolNonPaged);
 
+    PdhAddCounter(queryHandle, L"\\TCPv4\\Segments Sent/sec", NULL, &TCPv4Send);
+    PdhAddCounter(queryHandle, L"\\TCPv4\\Segments Retransmitted/sec", NULL, &TCPv4Retransmitted);
+
     PdhCollectQueryData(queryHandle);
 
     PdhOpenQuery(NULL, NULL, &_pdh_Query);	// 1인자에 NULL을 넣으면 실시간으로 데이터를 수집
 
     InitNetworkTrafficBytes();
+
+    maxRetransmitted = 0;
+    minRetransmitted = DBL_MAX;
+
+    sumSendSegments = 0;
+    sumSendSegments = 0;
 }
 
 SystemMonitor::~SystemMonitor(void)
@@ -30,7 +39,6 @@ SystemMonitor::~SystemMonitor(void)
 double SystemMonitor::GetCounterValue(PDH_HCOUNTER counter)
 {
     PDH_FMT_COUNTERVALUE value;
-    PdhCollectQueryData(queryHandle);
     PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, NULL, &value);
     return value.doubleValue;
 }
@@ -146,32 +154,73 @@ bool SystemMonitor::MeasureNetworkTrafficBytes(void)
 void SystemMonitor::PrintMonitoringData(void)
 {
     //================================================================================================================================
+    // 프로세스가 시작되고 나서 흐른 시간 측정
+    processTimer.PrintElapsedTime();
+    //================================================================================================================================
+
+
+    //================================================================================================================================
     CPUTime.UpdateCpuTime();
 
-    wprintf(L"Processor:\t%.3f%% / Process:\t%.3f%% \n", CPUTime.ProcessorTotal(), CPUTime.ProcessTotal());
+    wprintf(L"\nProcessor:\t%.3f%% / Process:\t%.3f%% \n", CPUTime.ProcessorTotal(), CPUTime.ProcessTotal());
     wprintf(L"ProcessorKernel:%.3f%% / ProcessKernel: %.3f%% \n", CPUTime.ProcessorKernel(), CPUTime.ProcessKernel());
     wprintf(L"ProcessorUser:\t%.3f%% / ProcessUser:\t%.3f%% \n\n", CPUTime.ProcessorUser(), CPUTime.ProcessUser());
     //================================================================================================================================
 
 
+    // queryHandle 값 최신화. 
+    PdhCollectQueryData(queryHandle);
     //================================================================================================================================
     std::wcout << L"User Allocated Memory : " << GetCounterValue(privateBytesCounter) / (1024 * 1024) << L" MB\n";
     std::wcout << L"Nonpaged Memory       : " << GetCounterValue(poolNonPagedCounter) / (1024 * 1024) << L" MB\n";
     std::wcout << L"Available Memory      : " << GetCounterValue(availableMemory) << L" MB\n";
     std::wcout << L"Nonpaged Pool Memory  : " << GetCounterValue(memoryPoolNonPaged) / (1024 * 1024) << L" MB\n\n";
+
+    double send = GetCounterValue(TCPv4Send);
+    double retransmitted = GetCounterValue(TCPv4Retransmitted);
+
+    sumSendSegments += send;
+    sumSendSegments += retransmitted;
+
+    if (minRetransmitted > retransmitted)
+        minRetransmitted = retransmitted;
+
+    if (maxRetransmitted < retransmitted)
+        maxRetransmitted = retransmitted;
+
+    AvgRetransmitted = AvgRetransmitted / 8 * 7 + retransmitted / 8;
+
+    std::wcout << L"Send Segment Count          : " << send << L" \n";
+    std::wcout << L"Retransmitted Segment Count : " << retransmitted << L" \n";
+    wprintf(L"Retransmitted Ratio         : %0.3f%%\n\n", retransmitted / (send + retransmitted) * 100);
+
+    std::wcout << L"Min Retransmitted Segment Count : " << minRetransmitted << L" \n";
+    std::wcout << L"Max Retransmitted Segment Count : " << maxRetransmitted << L" \n";
+    std::wcout << L"Avg Retransmitted Segment Count : " << AvgRetransmitted << L" \n\n";
     //================================================================================================================================
 
 
     //================================================================================================================================
     if (MeasureNetworkTrafficBytes())
     {
-        std::wcout << L"Network_RecvBytes     : " << _pdh_value_Network_RecvBytes / (1024) << L" Kbyte\n";
-        std::wcout << L"Network_SendBytes     : " << _pdh_value_Network_SendBytes / (1024) << L" Kbyte\n";
+        std::wcout << L"Network Recv Bytes     : " << _pdh_value_Network_RecvBytes / (1024) << L" Kbyte\n";
+
+        double sendBytes = _pdh_value_Network_SendBytes / (1024);
+        std::wcout << L"Network Send Bytes     : " << sendBytes << L" Kbyte\n";
+
+        sumSendBytes += sendBytes;
     }
     else
     {
         std::wcout << L"Error : Cannot measure Network_RecvBytes\n";
         std::wcout << L"Error : Cannot measure Network_SendBytes\n";
     }
+    //================================================================================================================================
+
+
+
+    //================================================================================================================================
+    std::wcout << L"\nSum Send Bytes          : " << 1.f * sumSendBytes / 1024 << L" Mbyte\n";
+    std::wcout << L"Sum Send Segments Count : " << sumSendSegments << L"\n";
     //================================================================================================================================
 }

@@ -7,6 +7,7 @@
 #pragma comment(lib, "Pdh.lib")
 
 #include "cpuUsage.h"
+#include "Timer.h"
 
 #define df_PDH_ETHERNET_MAX 8
 //--------------------------------------------------------------
@@ -45,16 +46,29 @@ private:
     PDH_HCOUNTER availableMemory;      // 사용 가능 메모리
     PDH_HCOUNTER memoryPoolNonPaged;   // 논페이지드 메모리
 
+    PDH_HCOUNTER TCPv4Send;            // TCPv4에서 전송된 세그먼트 갯수
+    PDH_HCOUNTER TCPv4Retransmitted;   // TCPv4에서 재전송된 세그먼트 갯수
+
+
+    double maxRetransmitted;    // 재전송된 세그먼트 갯수 최대 / 최소 / 평균 값
+    double minRetransmitted;
+    double AvgRetransmitted;    // 평균은 원본값 7/8, 추가된 값 1/8로 계산. 
+
+    UINT64 sumSendSegments;     // 서버 시작된 이후 보낸 세그먼트 갯수와 byte 크기 측정. 대략적으로, 큰 값이 예상되기에 UINT64로 계산
+    UINT64 sumSendBytes;
+
 
 
 
     PDH_HQUERY _pdh_Query;
 
-    st_ETHERNET _EthernetStruct[df_PDH_ETHERNET_MAX]; // 랜카드 별 PDH 정보
-    double _pdh_value_Network_RecvBytes; // 총 Recv Bytes 모든 이더넷의 Recv 수치 합산
-    double _pdh_value_Network_SendBytes; // 총 Send Bytes 모든 이더넷의 Send 수치 합산
+    st_ETHERNET _EthernetStruct[df_PDH_ETHERNET_MAX];   // 랜카드 별 PDH 정보
+    double _pdh_value_Network_RecvBytes;                // 총 Recv Bytes 모든 이더넷의 Recv 수치 합산
+    double _pdh_value_Network_SendBytes;                // 총 Send Bytes 모든 이더넷의 Send 수치 합산
 
 
     // CPU 전체 사용률 및 프로세스 CPU 사용률 측정
     CCpuUsage CPUTime; // CPUTime(hProcess)
+
+    CTimer processTimer;
 };

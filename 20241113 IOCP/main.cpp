@@ -102,16 +102,17 @@ unsigned int WINAPI MonitorThread(void* pArg)
 
     while (true)
     {
-        MoveCursorToTop();
+        //MoveCursorToTop();
 
         // value 초기화
         pThis->ClearTPSValue();
-        const FrameStats& status = pThis->GetStatusTPS();
 
         std::wcout << L"======================================================" << std::endl;
 
         monitor.PrintMonitoringData();
         std::cout << "\n";
+
+        const FrameStats& status = pThis->GetStatusTPS();
 
         // TPS 출력
         PrintTPSValue(status.accept, status.recvMessage, status.sendMessage);
@@ -122,7 +123,6 @@ unsigned int WINAPI MonitorThread(void* pArg)
         std::cout << "\nCurrent SessionCount : " << pThis->GetSessionCount() << "\n";
         std::cout << "Disconnected SessionCount : " << pThis->GetDisconnectedSessionCnt() << "\n";
         std::cout << "Packet Use Count : " << CPacket::usePacketCnt << "\n\n";
-
 
         std::wcout << L"======================================================" << std::endl;
 

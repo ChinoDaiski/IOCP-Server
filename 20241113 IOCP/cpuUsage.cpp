@@ -1,6 +1,6 @@
-
 #include "pch.h"
 #include "cpuUsage.h"
+
 
 //----------------------------------------------------------------------
 // 생성자, 확인대상 프로세스 핸들. 미입력시 자기 자신.
@@ -76,10 +76,17 @@ void CCpuUsage::UpdateCpuTime()
 	// 아이들 타임 / 커널 사용 타임 (아이들포함) / 유저 사용 타임
 	//---------------------------------------------------------
 	// 커널 타임에는 아이들 타임이 포함됨.
-	if (GetSystemTimes((PFILETIME)&Idle, (PFILETIME)&Kernel, (PFILETIME)&User) == false)
+
+	FILETIME ftIdle, ftKernel, ftUser;
+	if (GetSystemTimes((PFILETIME)&ftIdle, (PFILETIME)&ftKernel, (PFILETIME)&ftUser))
 	{
+		std::memcpy(&Idle, &ftIdle, sizeof(FILETIME));
+		std::memcpy(&Kernel, &ftKernel, sizeof(FILETIME));
+		std::memcpy(&User, &ftUser, sizeof(FILETIME));
 		return;
 	}
+	else
+		return;
 
 	// 이전 함수 호출이 됬을 때와 지금의 값을 비교. 단위는 100ns.
 	ULONGLONG KernelDiff = Kernel.QuadPart - _ftProcessor_LastKernel.QuadPart;

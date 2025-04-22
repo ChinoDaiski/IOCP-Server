@@ -4,6 +4,17 @@
 
 CSession::CSession()
 {
+    sock = 0;
+    port = 0;
+    memset(IP, '\0', sizeof(IP));
+    recvQ.ClearBuffer();
+    sendQ.ClearQueue();
+    memset(&overlappedRecv, '\0', sizeof(overlappedRecv));
+    memset(&overlappedSend, '\0', sizeof(overlappedSend));
+    id = 0;
+    IOCount = 0;
+    sendFlag = 0;
+    isAlive = true;
 }
 
 CSession::~CSession()

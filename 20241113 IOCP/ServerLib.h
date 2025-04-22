@@ -40,8 +40,6 @@ public:
     void OnRecv(UINT64 sessionID, CPacket* packet) override;
     void OnError(int errorCode, const wchar_t* errorMessage) override {}
 
-
-
 private:
     void InitWinSock(void) noexcept;
     void CreateListenSocket(PROTOCOL_TYPE type);
@@ -54,6 +52,7 @@ private:
     void InitResource(int maxSessionCount);
     void ReleaseResource(void);
 
+private:
     void CreateThreadPool(int workerThreadCount);
 
 private:
@@ -67,15 +66,12 @@ private:
     virtual void returnSession(CSession* pSession) override;
     virtual void InitSessionInfo(CSession* pSession) override;
 
-
 private:
     void loadIPList(const std::string& filePath, std::unordered_set<std::string>& IPList);
 
     std::unordered_set<std::string> allowedIPs; // 허용할 IP 목록
     std::unordered_set<std::string> blockedIPs; // 차단할 IP 목록
     
-
-
     // 서버 정검모드인지 확인하는 변수
     bool isServerMaintrenanceMode = false;
 };

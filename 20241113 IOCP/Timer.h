@@ -2,11 +2,11 @@
 
 #include <chrono>
 
-class Timer
+class CTimer
 {
 public:
-	Timer(void);
-	~Timer(void);
+	CTimer(void);
+	~CTimer(void);
 
 public:
     // 경과 시간을 계산하는 함수

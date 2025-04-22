@@ -78,7 +78,7 @@ public:
     SOCKET sock;
 
     USHORT port;
-    std::string IP;
+    char IP[16];    // IPv4만 다루기에 16byte(15 + 1) 사용
 
     CRingBuffer recvQ;
     CPacketQueue sendQ;
