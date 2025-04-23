@@ -5,6 +5,8 @@
 #include "Session.h"
 #include "Packet.h"
 
+thread_local tlsMemoryPool<CPacket, true> tlsPacketPool(20000);
+
 void CLanServer::RecvPost(CSession* pSession)
 {
     // recvMessageTPS 1 증가
@@ -188,6 +190,8 @@ bool CLanServer::AcceptPost(CSession* pSession)
 
 unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
 {
+    // 스레드 별로 
+
     CLanServer* pThis = (CLanServer*)pArg;
 
     DWORD curThreadID = GetCurrentThreadId();
@@ -384,7 +388,7 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 }
 
                 // 4. RecvQ에서 header의 len 크기만큼 임시 패킷 버퍼를 뽑는다.
-                CPacket* Packet = new CPacket; // 힙 매니저가 같은 공간을 계속 사용. 디버깅 해보니 지역변수지만 같은 영역을 계속 사용하고 있음.
+                CPacket* Packet = tlsPacketPool.Alloc(); //new CPacket; // 힙 매니저가 같은 공간을 계속 사용. 디버깅 해보니 지역변수지만 같은 영역을 계속 사용하고 있음.
                 Packet->AddRef();
 
                 int echoSendSize = header.bySize + sizeof(PACKET_HEADER);
@@ -407,7 +411,9 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 if (Packet->ReleaseRef() == 0)
                 {
                     // 0이라면 패킷을 제거
-                    delete Packet;
+                    //delete Packet;
+
+                    tlsPacketPool.Free(Packet);
                 }
             }
 

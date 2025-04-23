@@ -400,6 +400,9 @@ private:
 template<typename T, bool bPlacementNew>
 inline tlsMemoryPool<T, bPlacementNew>::tlsMemoryPool(UINT32 sizeInitialize)
 {
+    if (sizeInitialize == 0)
+        return;
+
     top = 0;
     m_curPoolCount = 0;
     m_maxPoolCount = 0;

@@ -22,7 +22,12 @@ CPacket::~CPacket()
 {
 	Clear();
 
-	delete m_chpBuffer;
+	if (m_chpBuffer)
+	{
+		delete[] m_chpBuffer;
+		m_chpBuffer = nullptr;
+	}
+
 	InterlockedDecrement(&usePacketCnt);
 }
 
