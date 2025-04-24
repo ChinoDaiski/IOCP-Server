@@ -8,6 +8,8 @@
 #include "Protocol.h"
 #include "Packet.h"
 
+#include "Managers.h"
+
 bool CGameServer::Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, int maxSessionCount, int pendingAcceptCount)
 {
     // 타이머 인터벌을 1ms로 줄임. 서버의 퀀텀이 길기에 타이머 인터벌을 줄여 비동기 작업의 지연이 퀀텀이 길어서 확인되까지 걸리는 시간을 줄임으로서 낭비하는 시간이 없어져 성능이 올라간다고 추측.
@@ -342,6 +344,9 @@ void CGameServer::InitResource(int maxSessionCount)
     isServerMaintrenanceMode = true;
 
     InitializeCriticalSection(&cs_sessionID);
+
+    // 매니저 정보 초기화
+    Managers::GetInstance().Init(hIOCP);
 }
 
 void CGameServer::CreateThreadPool(int workerThreadCount)

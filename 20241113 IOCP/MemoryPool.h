@@ -456,6 +456,7 @@ inline tlsMemoryPool<T, bPlacementNew>::~tlsMemoryPool(void)
     // 만약 할당 해제가 전부 완료되지 않았다면
     if (m_maxPoolCount != 0)
     {
+        DebugBreak();
         // 음... 어떻게할지 나중에 정하자구.
     }
 }

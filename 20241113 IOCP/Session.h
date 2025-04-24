@@ -94,7 +94,7 @@ public:
 
     UINT32 sendFlag;    // 멀티스레드 환경에서 interlockedexchange 함수로 Sending중이 맞는지 확인하기 위한 flag 변수
     
-    UINT32 isAlive;     // 살아 있는지 여부, 보통은 true이나 예외적으로 컨텐츠 쪽에서 먼저 끊을 경우 false가 되고, 이를 확인해서 IO Count가 0인 경우 삭제하도록 유도한다.
+    UINT32 isAlive;     // 살아 있는지 여부, 보통은 true이나 예외적으로 컨텐츠 쪽에서 먼저 끊을 경우 false가 되고, sendPost를 하지 않아 recv된 것 까지만 처리하고, IO Count가 0인 경우 삭제하도록 유도한다.
 
     // 스레드 ID, 액션 번호를 pair로 진행
     CircularQueue<std::pair<DWORD, ACTION>> debugQueue;

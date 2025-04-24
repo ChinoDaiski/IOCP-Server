@@ -27,9 +27,6 @@
     <Filter Include="소스 파일\03. ServerLib\Interface">
       <UniqueIdentifier>{559ced49-8c86-4cf6-ac65-ed888e708688}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\04. Content\Interface">
-      <UniqueIdentifier>{abfadd3d-f66d-4f7a-b81c-8cc78fbaa5b5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="소스 파일\05. Session">
       <UniqueIdentifier>{3c88d10d-4e0d-4a91-8a5e-a021a5b77233}</UniqueIdentifier>
     </Filter>
@@ -60,11 +57,23 @@
     <Filter Include="소스 파일\94. MemoryPool\lockfreeStack">
       <UniqueIdentifier>{f487f46f-8377-4210-83a8-991f02bcc7bc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\04. Content\Manager">
+      <UniqueIdentifier>{01753996-1394-499f-9d25-66d64ad6efa0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\07. Managers">
+      <UniqueIdentifier>{51e4042d-c4da-48fa-87f1-53bf87c5f11d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\04. Content\Manager\Content">
+      <UniqueIdentifier>{75b348b1-6117-483c-9dfc-01fc6e12bdf6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\04. Content\MainContent">
+      <UniqueIdentifier>{fc0be431-c671-446a-b0db-d51b7eb77253}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\04. Content\MainContent\01. Chatting">
+      <UniqueIdentifier>{6c0dcaa3-4f53-4b9e-a832-0f652458d1d6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Content.cpp">
-      <Filter>소스 파일\04. Content</Filter>
-    </ClCompile>
     <ClCompile Include="ServerLib.cpp">
       <Filter>소스 파일\03. ServerLib</Filter>
     </ClCompile>
@@ -101,11 +110,20 @@
     <ClCompile Include="Timer.cpp">
       <Filter>소스 파일\06. Timer</Filter>
     </ClCompile>
+    <ClCompile Include="ContentsManager.cpp">
+      <Filter>소스 파일\04. Content\Manager</Filter>
+    </ClCompile>
+    <ClCompile Include="Managers.cpp">
+      <Filter>소스 파일\07. Managers</Filter>
+    </ClCompile>
+    <ClCompile Include="ChattingContent.cpp">
+      <Filter>소스 파일\04. Content\MainContent\01. Chatting</Filter>
+    </ClCompile>
+    <ClCompile Include="Content.cpp">
+      <Filter>소스 파일\04. Content\Manager\Content</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Content.h">
-      <Filter>소스 파일\04. Content</Filter>
-    </ClInclude>
     <ClInclude Include="ServerLib.h">
       <Filter>소스 파일\03. ServerLib</Filter>
     </ClInclude>
@@ -117,9 +135,6 @@
     </ClInclude>
     <ClInclude Include="IServer.h">
       <Filter>소스 파일\03. ServerLib\Interface</Filter>
-    </ClInclude>
-    <ClInclude Include="IContent.h">
-      <Filter>소스 파일\04. Content\Interface</Filter>
     </ClInclude>
     <ClInclude Include="Session.h">
       <Filter>소스 파일\05. Session</Filter>
@@ -150,6 +165,21 @@
     </ClInclude>
     <ClInclude Include="concurrent_stack.h">
       <Filter>소스 파일\94. MemoryPool\lockfreeStack</Filter>
+    </ClInclude>
+    <ClInclude Include="ContentsManager.h">
+      <Filter>소스 파일\04. Content\Manager</Filter>
+    </ClInclude>
+    <ClInclude Include="Managers.h">
+      <Filter>소스 파일\07. Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="ChattingContent.h">
+      <Filter>소스 파일\04. Content\MainContent\01. Chatting</Filter>
+    </ClInclude>
+    <ClInclude Include="Content.h">
+      <Filter>소스 파일\04. Content\Manager\Content</Filter>
+    </ClInclude>
+    <ClInclude Include="ContentType.h">
+      <Filter>소스 파일\04. Content\MainContent</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

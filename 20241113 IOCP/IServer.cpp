@@ -4,8 +4,7 @@
 #include "IServer.h"
 #include "Session.h"
 #include "Packet.h"
-
-thread_local tlsMemoryPool<CPacket, true> tlsPacketPool(20000);
+#include "Content.h"
 
 void CLanServer::RecvPost(CSession* pSession)
 {
@@ -58,6 +57,10 @@ void CLanServer::RecvPost(CSession* pSession)
 // sendQ에 데이터를 넣고, WSASend를 호출
 void CLanServer::SendPost(CSession* pSession)
 {
+    // 세션이 죽었다면, 더 이상 WSASend 호출을 하지 않고, WSARecv 걸어둔 것 까지만 처리. 그럼 IOCount가 0이 되며 삭제될 예정
+    if (pSession->isAlive == 0)
+        return;
+
     DWORD curThreadID = GetCurrentThreadId();
 
     // 보낼 것이 있을 때 sendflag 확인함.
@@ -191,6 +194,7 @@ bool CLanServer::AcceptPost(CSession* pSession)
 unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
 {
     // 스레드 별로 
+    thread_local tlsMemoryPool<CPacket, true> tlsPacketPool(20000);
 
     CLanServer* pThis = (CLanServer*)pArg;
 
@@ -217,7 +221,7 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
         retval = GetQueuedCompletionStatus(pThis->hIOCP, &transferredDataLen, (PULONG_PTR)&pSession, &pOverlapped, INFINITE);
 
         error = WSAGetLastError();
-        if (pSession)
+        if (pOverlapped != nullptr && pSession)
         {
             Logging(pSession, ACTION::WORKER_AFTER_GQCS);
 
@@ -228,7 +232,6 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
             else if (pOverlapped == &pSession->overlappedSend)
                 Logging(pSession, ACTION::WORKER_SEND_COMPLETION_NOTICE);
         }
-
 
         // PQCS로 넣은 완료 통지값(0, 0, NULL)이 온 경우. 즉, 내(main 스레드)가 먼저 끊은 경우
         // 완료통지가 있던 말던 스레드를 종료.
@@ -248,12 +251,24 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 ;   // 바로 IO Count를 1 감소시키는 쪽으로 넘어가서 처리.
             }
 
-            if (pSession)
+            if (pOverlapped != nullptr && pSession)
             {
                 Logging(pSession, ACTION::WORKER_LEAVE_CS1);
             }
         }
 
+        //==================================================================================================================================
+        // 1. 프레임 이벤트 분기: pOverlapped == nullptr 인 경우, 컨텐츠 관련 요청이므로 key를 Content* 로 캐스팅해서 사용
+        //==================================================================================================================================
+        if (pOverlapped == nullptr)
+        {
+            reinterpret_cast<Content*>(pSession)->Tick();
+            continue;
+        }
+
+        //==================================================================================================================================
+        // 2. 네트워크 I / O 이벤트 처리(기존 로직)
+        //==================================================================================================================================
         // 문제가 없는데 pSeesion이 nullptr인 경우, AcceptEx로 인한 완료통지이기 때문에 pOverlapped를 확인하여 세션값을 찾는다. 
         if (!pSession)
         {
@@ -263,7 +278,9 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
                 );
         }
 
-        // 1) AcceptEx 완료 처리
+        //==================================================================================================================================
+        // 1. AcceptEx 완료 통지가 온 경우
+        //==================================================================================================================================
         if (pOverlapped == &pSession->overlappedAccept)
         {
             // AcceptTps 1 증가
@@ -353,7 +370,9 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
             //    DebugBreak();
         }
 
-        // recv 완료 통지가 온 경우
+        //==================================================================================================================================
+        // 2. recv 완료 통지가 온 경우
+        //==================================================================================================================================
         else if (pOverlapped == &pSession->overlappedRecv) {
 
             // WSARecv는 링버퍼를 사용하기에 버퍼에 데이터만 존재하고, 사이즈는 증가하지 않았다. 고로 사이즈를 증가시킨다.
@@ -423,7 +442,9 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
             Logging(pSession, ACTION::WORKER_RECV_RECVPOST_AFTER);
         }
 
-        // send 완료 통지가 온 경우
+        //==================================================================================================================================
+        // 3. send 완료 통지가 온 경우
+        //==================================================================================================================================
         else if (pOverlapped == &pSession->overlappedSend) {
             
             // 보내는 것을 완료 했으므로 sendQ에 있는 데이터를 제거
@@ -466,7 +487,10 @@ unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
             //Logging(pSession, (UINT32)ACTION::SEND_QUEUE_SENDQ_READPOS + pSession->sendQ.GetReadPos());
         }
 
-        // 완료통지 처리 이후 IO Count 1 감소
+        //==================================================================================================================================
+        // 완료통지 처리 이후
+        //==================================================================================================================================
+        // IO Count 1 감소
         IOCount = InterlockedDecrement(&pSession->IOCount);
         Logging(pSession, (UINT32)ACTION::IOCOUNT_0 + IOCount);
 

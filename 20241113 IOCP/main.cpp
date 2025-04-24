@@ -10,10 +10,27 @@
 
 #include "Protocol.h"
 
+#include "Packet.h"
+
 #pragma comment(lib, "PDH_DLL.lib")
 #include "SystemMonitor.h"
 
 //#include "Timer.h"
+
+
+// Content headers
+#include "ContentType.h"
+#include "ContentsManager.h"
+#include "ChattingContent.h"
+
+
+
+#include "Managers.h"
+
+
+
+
+
 
 #define SERVERPORT 6000
 
@@ -42,17 +59,32 @@ void MoveCursorToTop() {
 
 
 unsigned int WINAPI MonitorThread(void* pArg);
+unsigned int WINAPI TimerThread(void* pArg);
 
 int main(void)
 {
+    // 서버 시작
     CGameServer GameServer;
 
     // IP 입력시 inet_addr(ip); <- 원하는 IP를 문자열로 또는 htonl(INADDR_ANY)를 호출해서 모든 NIC으로부터 데이터를 받을 수 도 있다.
     GameServer.Start(htonl(INADDR_ANY), SERVERPORT, 8, 4, true, 20000, 100);
 
+
+
+    // 컨텐츠 생성 - 생성시 컨텐츠 매니저에 컨텐츠가 알아서 등록됨
+    ChattingContent chatting((int)ContentType::Chatting, Managers::GetInstance().Content());
+
+
+
+    DWORD dwThreadID;
+
+    // 타이머 스레드 생성
+    HANDLE hTimerThread;   // 타이머 스레드 핸들값
+    int initialServerFrame = 25;
+    hTimerThread = (HANDLE)_beginthreadex(NULL, 0, TimerThread, &initialServerFrame, 0, (unsigned int*)&dwThreadID);
+
     // 모니터 스레드 생성
     HANDLE hMonitorThread;   // 모니터 스레드 핸들값
-    DWORD dwThreadID;
     hMonitorThread = (HANDLE)_beginthreadex(NULL, 0, MonitorThread, &GameServer, 0, (unsigned int*)&dwThreadID);
 
 
@@ -129,6 +161,27 @@ unsigned int WINAPI MonitorThread(void* pArg)
 
         // 1초간 Sleep
         Sleep(1000);
+    }
+
+    return 0;
+}
+
+unsigned int WINAPI TimerThread(void* pArg)
+{
+    int targetFrame = *(int*)pArg;
+
+    CTimer timer;
+    timer.InitTimer(targetFrame);
+
+    // 일정 주기마다 컨텐츠의 정보를 PostQueuedCompletionStatus 에 넣어 호출
+    while (true)
+    {
+        int sleepDurationMs = timer.CheckFrame();
+
+        Managers::GetInstance().Content()->Tick();
+
+        if (sleepDurationMs != 0)
+            Sleep(sleepDurationMs);
     }
 
     return 0;

@@ -169,12 +169,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ChattingContent.cpp" />
     <ClCompile Include="CircularQueue.cpp" />
     <ClCompile Include="Content.cpp" />
+    <ClCompile Include="ContentsManager.cpp" />
     <ClCompile Include="cpuUsage.cpp" />
     <ClCompile Include="CrashDump.cpp" />
     <ClCompile Include="IServer.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Managers.cpp" />
     <ClCompile Include="Packet.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -189,12 +192,15 @@
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ChattingContent.h" />
     <ClInclude Include="CircularQueue.h" />
     <ClInclude Include="concurrent_stack.h" />
     <ClInclude Include="Content.h" />
+    <ClInclude Include="ContentsManager.h" />
+    <ClInclude Include="ContentType.h" />
     <ClInclude Include="cpuUsage.h" />
     <ClInclude Include="CrashDump.h" />
-    <ClInclude Include="IContent.h" />
+    <ClInclude Include="Managers.h" />
     <ClInclude Include="MemoryPool.h" />
     <ClInclude Include="Packet.h" />
     <ClInclude Include="pch.h" />
