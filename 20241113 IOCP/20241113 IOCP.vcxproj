@@ -172,7 +172,7 @@
     <ClCompile Include="ChattingContent.cpp" />
     <ClCompile Include="CircularQueue.cpp" />
     <ClCompile Include="Content.cpp" />
-    <ClCompile Include="ContentsManager.cpp" />
+    <ClCompile Include="ContentManager.cpp" />
     <ClCompile Include="cpuUsage.cpp" />
     <ClCompile Include="CrashDump.cpp" />
     <ClCompile Include="IServer.cpp" />
@@ -196,7 +196,7 @@
     <ClInclude Include="CircularQueue.h" />
     <ClInclude Include="concurrent_stack.h" />
     <ClInclude Include="Content.h" />
-    <ClInclude Include="ContentsManager.h" />
+    <ClInclude Include="ContentManager.h" />
     <ClInclude Include="ContentType.h" />
     <ClInclude Include="cpuUsage.h" />
     <ClInclude Include="CrashDump.h" />
@@ -209,6 +209,7 @@
     <ClInclude Include="IServer.h" />
     <ClInclude Include="ServerLib.h" />
     <ClInclude Include="Session.h" />
+    <ClInclude Include="Singleton.h" />
     <ClInclude Include="SystemMonitor.h" />
     <ClInclude Include="Timer.h" />
   </ItemGroup>

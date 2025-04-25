@@ -1,11 +1,15 @@
 #include "pch.h"
-#include "ContentsManager.h"
+#include "ContentManager.h"
 #include "Content.h"
 #include "Packet.h"
 
-ContentManager::ContentManager(HANDLE port)
-    : hIOCP(port)
+ContentManager::ContentManager()
 {
+}
+
+void ContentManager::InitWithIOCP(HANDLE port)
+{
+    hIOCP = port;
 }
 
 void ContentManager::registerContent(const int contentID, Content* c)

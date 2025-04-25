@@ -9,6 +9,7 @@
 #include "Packet.h"
 
 #include "Managers.h"
+#include "ContentManager.h"
 
 bool CGameServer::Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, int maxSessionCount, int pendingAcceptCount)
 {
@@ -71,14 +72,13 @@ void CGameServer::Stop(void)
     // 세션의 연결이 다 끊어졌음을 확인하고, PQCS를 워커 스레드 갯수만큼 호출, 이후 WFMOS를 호출하고 기다림
 
     // 모든 워커 스레드가 끊어졌다면 리소스를 정리하고 스레드 오류가 있는지 확인 후 없으면 종료.
-
-    //for(int i =0;i<)
-    //PostQueuedCompletionStatus(hIOCP, 0, 0, NULL);
+    for (int i = 0; i < threadCnt; ++i)
+        PostQueuedCompletionStatus(hIOCP, 0, 0, NULL);
 
     // ===========================================================================
     // 1. 모든 스레드가 종료되기를 대기
     // ===========================================================================
-    DWORD retVal = WaitForMultipleObjects(threadCnt, hThreads, TRUE, INFINITE);
+    DWORD retVal = WaitForMultipleObjects(threadCnt + 1, hThreads, TRUE, INFINITE);     // accept 스레드 갯수 1 추가해서 검사
     DWORD retError = GetLastError();
 
     // ===========================================================================
@@ -281,6 +281,8 @@ void CGameServer::CreateIOCP(int runningThreadCount)
         std::cerr << "INVALID_HANDLE : hIOCP, Error : " << WSAGetLastError() << "\n";
         DebugBreak();
     }
+
+    Managers::GetInstance().Content()->InitWithIOCP(hIOCP);
 }
 
 void CGameServer::Bind(unsigned long ip, UINT16 port)
@@ -344,9 +346,6 @@ void CGameServer::InitResource(int maxSessionCount)
     isServerMaintrenanceMode = true;
 
     InitializeCriticalSection(&cs_sessionID);
-
-    // 매니저 정보 초기화
-    Managers::GetInstance().Init(hIOCP);
 }
 
 void CGameServer::CreateThreadPool(int workerThreadCount)

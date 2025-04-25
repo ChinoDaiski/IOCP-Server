@@ -10,7 +10,8 @@ class ContentManager {
     };
 
 public:
-    ContentManager(HANDLE port);
+    ContentManager(void);
+    void InitWithIOCP(HANDLE port);
 
     void registerContent(const int contentID, Content* c);
 

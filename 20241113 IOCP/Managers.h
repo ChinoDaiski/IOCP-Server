@@ -1,29 +1,17 @@
 #pragma once
 
+#include "Singleton.h"
+
 class ContentManager;
 
-class Managers
+class Managers : public Singleton<Managers>
 {
-public:
-    // 가장 간단한 형태의 스레드 안전 싱글턴
-    static Managers& GetInstance() {
-        static Managers _inst;
-        return _inst;
-    }
-
-public:
-    // 복사/이동 금지
-    Managers(const Managers&) = delete;
-    Managers& operator=(const Managers&) = delete;
-    Managers(Managers&&) = delete;
-    Managers& operator=(Managers&&) = delete;
+private:
+    friend class Singleton<Managers>;  // 싱글턴 생성 허용  
 
 private:
-    Managers() = default;  // 생성자 은닉
-    ~Managers() = default;
-
-public:
-    void Init(HANDLE hIOCP);
+    Managers();
+    void Initialize();
 
 public:
     ContentManager* Content(void) { return pContentMgr; }
@@ -32,3 +20,15 @@ private:
     ContentManager* pContentMgr;
 };
 
+
+//-----------------------------------------------------------------------------  
+// 사용 예시  
+//-----------------------------------------------------------------------------  
+// class MyManager : public Singleton<MyManager>  
+// {   
+//     friend class Singleton<MyManager>;  // 싱글턴 생성 허용  
+//  
+// private:  
+//     MyManager() { /* 초기화 코드 */ }  
+//     void Initialize() { /* 초기화 로직 */ }
+// };  

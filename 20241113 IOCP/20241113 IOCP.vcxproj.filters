@@ -110,7 +110,7 @@
     <ClCompile Include="Timer.cpp">
       <Filter>소스 파일\06. Timer</Filter>
     </ClCompile>
-    <ClCompile Include="ContentsManager.cpp">
+    <ClCompile Include="ContentManager.cpp">
       <Filter>소스 파일\04. Content\Manager</Filter>
     </ClCompile>
     <ClCompile Include="Managers.cpp">
@@ -166,7 +166,7 @@
     <ClInclude Include="concurrent_stack.h">
       <Filter>소스 파일\94. MemoryPool\lockfreeStack</Filter>
     </ClInclude>
-    <ClInclude Include="ContentsManager.h">
+    <ClInclude Include="ContentManager.h">
       <Filter>소스 파일\04. Content\Manager</Filter>
     </ClInclude>
     <ClInclude Include="Managers.h">
@@ -180,6 +180,9 @@
     </ClInclude>
     <ClInclude Include="ContentType.h">
       <Filter>소스 파일\04. Content\MainContent</Filter>
+    </ClInclude>
+    <ClInclude Include="Singleton.h">
+      <Filter>소스 파일\07. Managers</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

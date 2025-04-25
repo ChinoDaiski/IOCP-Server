@@ -3,7 +3,7 @@
 
 #include "Content.h"
 #include "Session.h"
-#include "ContentsManager.h"
+#include "ContentManager.h"
 
 //UINT32 CPlayer::g_ID = 0;
 //

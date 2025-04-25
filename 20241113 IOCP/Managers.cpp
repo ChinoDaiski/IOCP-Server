@@ -1,9 +1,13 @@
 #include "pch.h"
 #include "Managers.h"
 
-#include "ContentsManager.h"
+#include "ContentManager.h"
 
-void Managers::Init(HANDLE hIOCP)
+Managers::Managers()
 {
-	pContentMgr = new ContentManager(hIOCP);
+}
+
+void Managers::Initialize()
+{
+	pContentMgr = new ContentManager();
 }
