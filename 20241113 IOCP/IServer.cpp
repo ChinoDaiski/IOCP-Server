@@ -194,7 +194,7 @@ bool CLanServer::AcceptPost(CSession* pSession)
 unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
 {
     // 스레드 별로 
-    thread_local tlsMemoryPool<CPacket, true> tlsPacketPool(20000);
+    thread_local tlsMemoryPool<CPacket, false> tlsPacketPool(20000);
 
     CLanServer* pThis = (CLanServer*)pArg;
 

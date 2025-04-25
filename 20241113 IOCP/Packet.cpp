@@ -29,11 +29,6 @@ CPacket::~CPacket()
 	}
 
 	InterlockedDecrement(&usePacketCnt);
-
-	if (usePacketCnt > 10000000)
-	{
-		int a = 10;
-	}
 }
 
 void CPacket::Clear(void)

@@ -28,12 +28,14 @@ struct Node
     UINT64 next;
     //Node<T>* next;
 
-#endif // _DEBUG
-#ifndef _DEBUG
+#else
+
     T data;
     UINT64 next;
 
 #endif // !_DEBUG
+
+    Node() = default;
 };
 
 template<typename T>
@@ -50,13 +52,15 @@ struct tlsNode
     void* ownerPool;
     //Node<T>* next;
 
-#endif // _DEBUG
-#ifndef _DEBUG
+#else
+
     T data;
     UINT64 next;
     void* ownerPool;
 
 #endif // !_DEBUG
+
+    tlsNode() = default;
 };
 
 
@@ -237,7 +241,7 @@ inline T* MemoryPool<T, bPlacementNew>::Alloc(void)
         if (!currentNode) {
             // m_freeNode가 nullptr이라면 풀에 객체가 존재하지 않는다는 의미이므로 새로운 객체 할당
 
-    // 새 노드 할당
+            // 새 노드 할당
             Node<T>* newNode = (Node<T>*)malloc(sizeof(Node<T>));
             ZeroMemory(newNode, sizeof(T));
 
@@ -252,7 +256,8 @@ inline T* MemoryPool<T, bPlacementNew>::Alloc(void)
             newNode->next = 0;      // 정확힌 m_freeNode를 대입해도 된다. 근데 이 자체가 nullptr이니 보기 쉽게 nullptr 넣음.
             // 이제 0으로 초기화
 
-// placement New 옵션이 켜져있다면 생성자 호출
+
+            // 처음에는 생성자를 호출 -> tlsMemoryPool이랑 다른 부분인데 나중에 수정이 필요함. 당장은 원인을 모르겠다.
             if constexpr (bPlacementNew)
             {
                 //new (reinterpret_cast<char*>(newNode) + offsetof(Node<T>, data)) T();
@@ -270,7 +275,7 @@ inline T* MemoryPool<T, bPlacementNew>::Alloc(void)
 
         if (CAS(&top, currentTop, nextNode)) {
 
-            // placement New 옵션이 켜져있다면 생성자 호출
+            // 재사용시 placement New 옵션이 켜져있다면 생성자 호출
             if constexpr (bPlacementNew)
             {
                 //new (reinterpret_cast<char*>(returnNode) + offsetof(Node<T>, data)) T();
@@ -324,7 +329,7 @@ inline bool MemoryPool<T, bPlacementNew>::Free(T* ptr)
     }
 #endif // _DEBUG
 
-    // 만약 placement new 옵션이 켜져 있다면, 생성을 placement new로 했을 것이므로 해당 객체의 소멸자를 수동으로 불러줌
+    // 만약 placement new 옵션이 켜져 있다면, 재사용시 placement new로 했을 것이므로 해당 객체의 소멸자를 수동으로 호출
     if constexpr (bPlacementNew)
     {
         pNode->data.~T();
@@ -479,7 +484,7 @@ inline T* tlsMemoryPool<T, bPlacementNew>::Alloc(void)
         if (!currentNode) {
             // m_freeNode가 nullptr이라면 풀에 객체가 존재하지 않는다는 의미이므로 새로운 객체 할당
 
-    // 새 노드 할당
+            // 새 노드 할당
             tlsNode<T>* newNode = (tlsNode<T>*)malloc(sizeof(tlsNode<T>));
             newNode->ownerPool = this;
             ZeroMemory(newNode, sizeof(T));
@@ -495,12 +500,8 @@ inline T* tlsMemoryPool<T, bPlacementNew>::Alloc(void)
             newNode->next = 0;      // 정확힌 m_freeNode를 대입해도 된다. 근데 이 자체가 nullptr이니 보기 쉽게 nullptr 넣음.
             // 이제 0으로 초기화
 
-// placement New 옵션이 켜져있다면 생성자 호출
-            if constexpr (bPlacementNew)
-            {
-                //new (reinterpret_cast<char*>(newNode) + offsetof(Node<T>, data)) T();
-                new (&(newNode->data)) T();
-            }
+            // 처음에는 생성자를 호출
+            new (&(newNode->data)) T(); //new (reinterpret_cast<char*>(newNode) + offsetof(Node<T>, data)) T();
 
             // 풀에서 사용하는 최대 노드 갯수를 1 증가
             InterlockedIncrement(&m_maxPoolCount);
@@ -513,7 +514,7 @@ inline T* tlsMemoryPool<T, bPlacementNew>::Alloc(void)
 
         if (CAS(&top, currentTop, nextNode)) {
 
-            // placement New 옵션이 켜져있다면 생성자 호출
+            // 재사용시 placement New 옵션이 켜져있다면 생성자 호출
             if constexpr (bPlacementNew)
             {
                 //new (reinterpret_cast<char*>(returnNode) + offsetof(Node<T>, data)) T();
