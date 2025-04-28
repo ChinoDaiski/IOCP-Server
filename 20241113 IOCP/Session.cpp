@@ -1,6 +1,7 @@
 
 #include "pch.h"
 #include "Session.h"
+#include "Object.h"
 
 CSession::CSession()
 {
@@ -14,7 +15,7 @@ CSession::CSession()
     id = 0;
     IOCount = 0;
     sendFlag = 0;
-    isAlive = 1;
+    networkAlive = 1;
 }
 
 CSession::~CSession()

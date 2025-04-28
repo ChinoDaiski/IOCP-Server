@@ -2,6 +2,7 @@
 #include "Managers.h"
 
 #include "ContentManager.h"
+#include "TimerManager.h"
 
 Managers::Managers()
 {
@@ -10,4 +11,5 @@ Managers::Managers()
 void Managers::Initialize()
 {
 	pContentMgr = new ContentManager();
+	pTimerMgr = new TimerManager();
 }

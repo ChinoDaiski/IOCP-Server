@@ -19,6 +19,9 @@ struct FrameStats
     UINT32 MaxPoolCount;
 };
 
+// 스레드 별로 
+extern thread_local tlsMemoryPool<CPacket, false> tlsPacketPool;
+
 class CLanServer { 
 public:
     virtual ~CLanServer() {}

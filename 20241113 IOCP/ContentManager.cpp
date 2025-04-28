@@ -2,6 +2,8 @@
 #include "ContentManager.h"
 #include "Content.h"
 #include "Packet.h"
+#include "Session.h"
+#include "Object.h"
 
 ContentManager::ContentManager()
 {
@@ -25,6 +27,11 @@ void ContentManager::transferSession(const int contentID, CSession* pSession)
             break;
         }
     }
+}
+
+void ContentManager::removeSession(CSession* pSession)
+{
+    pSession->pObj->SetDead();
 }
 
 void ContentManager::Tick(void)

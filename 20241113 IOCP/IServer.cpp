@@ -6,6 +6,9 @@
 #include "Packet.h"
 #include "Content.h"
 
+// 스레드 별로 
+thread_local tlsMemoryPool<CPacket, false> tlsPacketPool(20000);
+
 void CLanServer::RecvPost(CSession* pSession)
 {
     // recvMessageTPS 1 증가
@@ -58,7 +61,7 @@ void CLanServer::RecvPost(CSession* pSession)
 void CLanServer::SendPost(CSession* pSession)
 {
     // 세션이 죽었다면, 더 이상 WSASend 호출을 하지 않고, WSARecv 걸어둔 것 까지만 처리. 그럼 IOCount가 0이 되며 삭제될 예정
-    if (pSession->isAlive == 0)
+    if (pSession->networkAlive == 0)
         return;
 
     DWORD curThreadID = GetCurrentThreadId();
@@ -193,9 +196,6 @@ bool CLanServer::AcceptPost(CSession* pSession)
 
 unsigned int __stdcall CLanServer::WorkerThread(void* pArg)
 {
-    // 스레드 별로 
-    thread_local tlsMemoryPool<CPacket, false> tlsPacketPool(20000);
-
     CLanServer* pThis = (CLanServer*)pArg;
 
     DWORD curThreadID = GetCurrentThreadId();

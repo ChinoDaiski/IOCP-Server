@@ -8,7 +8,7 @@ class CPacket
 public:
 	enum class en_PACKET : UINT32
 	{
-		eBUFFER_DEFAULT = 100		// 패킷의 기본 버퍼 사이즈.
+		eBUFFER_DEFAULT = 2000		// 패킷의 기본 버퍼 사이즈.
 	};
 
 	//////////////////////////////////////////////////////////////////////////

@@ -15,17 +15,17 @@
 #pragma comment(lib, "PDH_DLL.lib")
 #include "SystemMonitor.h"
 
-//#include "Timer.h"
 
-
-// Content headers
+// Content
 #include "ContentType.h"
 #include "ContentManager.h"
 #include "ChattingContent.h"
 
-
+// Timer
+#include "TimerManager.h"
 
 #include "Managers.h"
+
 
 
 
@@ -176,18 +176,17 @@ unsigned int WINAPI TimerThread(void* pArg)
 {
     int targetFrame = *(int*)pArg;
 
-    CTimer timer;
-    timer.InitTimer(targetFrame);
+    Managers::GetInstance().Timer()->InitTimer(targetFrame);
 
     // 일정 주기마다 컨텐츠의 정보를 PostQueuedCompletionStatus 에 넣어 호출
     while (true)
     {
-        int sleepDurationMs = timer.CheckFrame();
-
-        Managers::GetInstance().Content()->Tick();
+        int sleepDurationMs = Managers::GetInstance().Timer()->CheckFrame();
 
         if (sleepDurationMs != 0)
             Sleep(sleepDurationMs);
+
+        Managers::GetInstance().Content()->Tick();
     }
 
     return 0;

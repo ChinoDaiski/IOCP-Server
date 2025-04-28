@@ -31,5 +31,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include <chrono>
+
 #include "CrashDump.h"
 CCrashDump dump;
+
+#include "Defines.h"

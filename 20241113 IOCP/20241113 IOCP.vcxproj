@@ -178,6 +178,7 @@
     <ClCompile Include="IServer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Managers.cpp" />
+    <ClCompile Include="Object.cpp" />
     <ClCompile Include="Packet.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -189,7 +190,7 @@
     <ClCompile Include="ServerLib.cpp" />
     <ClCompile Include="Session.cpp" />
     <ClCompile Include="SystemMonitor.cpp" />
-    <ClCompile Include="Timer.cpp" />
+    <ClCompile Include="TimerManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ChattingContent.h" />
@@ -200,8 +201,10 @@
     <ClInclude Include="ContentType.h" />
     <ClInclude Include="cpuUsage.h" />
     <ClInclude Include="CrashDump.h" />
+    <ClInclude Include="Defines.h" />
     <ClInclude Include="Managers.h" />
     <ClInclude Include="MemoryPool.h" />
+    <ClInclude Include="Object.h" />
     <ClInclude Include="Packet.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Protocol.h" />
@@ -211,7 +214,7 @@
     <ClInclude Include="Session.h" />
     <ClInclude Include="Singleton.h" />
     <ClInclude Include="SystemMonitor.h" />
-    <ClInclude Include="Timer.h" />
+    <ClInclude Include="TimerManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -9,180 +9,198 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="소스 파일\00. Main">
+    <Filter Include="소스 파일\00. ServerCore">
+      <UniqueIdentifier>{59732ebe-983f-4906-9299-f3c13ecffe15}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\08. Object">
+      <UniqueIdentifier>{9978a909-799f-436c-a2c1-d43b05f11af3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\00. Main">
       <UniqueIdentifier>{5f0d5509-c256-4c16-8533-f708110a65a2}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\01. RingBuffer">
+    <Filter Include="소스 파일\00. ServerCore\01. RingBuffer">
       <UniqueIdentifier>{24dfc853-5551-4211-bef0-a38547508930}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\02. Packet">
+    <Filter Include="소스 파일\00. ServerCore\02. Packet">
       <UniqueIdentifier>{b7d72369-b10d-430c-aedf-bc6beddc1d31}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\03. ServerLib">
+    <Filter Include="소스 파일\00. ServerCore\03. ServerLib">
       <UniqueIdentifier>{94eced6c-20da-473f-b81d-1257d31bad49}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\04. Content">
-      <UniqueIdentifier>{a806c415-9fa9-4192-a164-4368488c6b21}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\03. ServerLib\Interface">
+    <Filter Include="소스 파일\00. ServerCore\03. ServerLib\Interface">
       <UniqueIdentifier>{559ced49-8c86-4cf6-ac65-ed888e708688}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\05. Session">
-      <UniqueIdentifier>{3c88d10d-4e0d-4a91-8a5e-a021a5b77233}</UniqueIdentifier>
+    <Filter Include="소스 파일\00. ServerCore\04. Content">
+      <UniqueIdentifier>{a806c415-9fa9-4192-a164-4368488c6b21}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\99. pch">
-      <UniqueIdentifier>{5b84845f-d174-49c1-b9b5-721e9e052426}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\98. Protocol">
-      <UniqueIdentifier>{09f137ae-7bb6-42ce-9aaf-f3ec7f1248b7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\97. CircularQueue">
-      <UniqueIdentifier>{14b00c09-2a12-4085-aefd-5e368435f655}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\96. CrashDump">
-      <UniqueIdentifier>{c438b765-ccd4-40b2-8b4c-da99c6d019f5}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\06. Timer">
-      <UniqueIdentifier>{538e56d6-7919-4c6e-90c2-b439fabb2d78}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\95. SystemMonitor">
-      <UniqueIdentifier>{7c35e243-256e-4c6f-b333-a91ef833efca}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\95. SystemMonitor\cpuUsage">
-      <UniqueIdentifier>{cd8fb7da-66c1-40b9-a382-20aba32df246}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\94. MemoryPool">
-      <UniqueIdentifier>{025d494b-c0cc-4b2b-be48-b1e67898cf24}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\94. MemoryPool\lockfreeStack">
-      <UniqueIdentifier>{f487f46f-8377-4210-83a8-991f02bcc7bc}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="소스 파일\04. Content\Manager">
+    <Filter Include="소스 파일\00. ServerCore\04. Content\Manager">
       <UniqueIdentifier>{01753996-1394-499f-9d25-66d64ad6efa0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\07. Managers">
+    <Filter Include="소스 파일\00. ServerCore\05. Session">
+      <UniqueIdentifier>{3c88d10d-4e0d-4a91-8a5e-a021a5b77233}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\06. Timer">
+      <UniqueIdentifier>{538e56d6-7919-4c6e-90c2-b439fabb2d78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\07. Managers">
       <UniqueIdentifier>{51e4042d-c4da-48fa-87f1-53bf87c5f11d}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\04. Content\Manager\Content">
-      <UniqueIdentifier>{75b348b1-6117-483c-9dfc-01fc6e12bdf6}</UniqueIdentifier>
+    <Filter Include="소스 파일\00. ServerCore\94. MemoryPool">
+      <UniqueIdentifier>{025d494b-c0cc-4b2b-be48-b1e67898cf24}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\04. Content\MainContent">
+    <Filter Include="소스 파일\00. ServerCore\94. MemoryPool\lockfreeStack">
+      <UniqueIdentifier>{f487f46f-8377-4210-83a8-991f02bcc7bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\95. SystemMonitor">
+      <UniqueIdentifier>{7c35e243-256e-4c6f-b333-a91ef833efca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\95. SystemMonitor\cpuUsage">
+      <UniqueIdentifier>{cd8fb7da-66c1-40b9-a382-20aba32df246}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\96. CrashDump">
+      <UniqueIdentifier>{c438b765-ccd4-40b2-8b4c-da99c6d019f5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\97. CircularQueue">
+      <UniqueIdentifier>{14b00c09-2a12-4085-aefd-5e368435f655}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\99. pch">
+      <UniqueIdentifier>{5b84845f-d174-49c1-b9b5-721e9e052426}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\01. Contents">
+      <UniqueIdentifier>{64da63da-2be1-48d6-a37e-55ac7df8582c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\01. Contents\MainContent">
       <UniqueIdentifier>{fc0be431-c671-446a-b0db-d51b7eb77253}</UniqueIdentifier>
     </Filter>
-    <Filter Include="소스 파일\04. Content\MainContent\01. Chatting">
+    <Filter Include="소스 파일\01. Contents\MainContent\01. Chatting">
       <UniqueIdentifier>{6c0dcaa3-4f53-4b9e-a832-0f652458d1d6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\98. Protocol">
+      <UniqueIdentifier>{09f137ae-7bb6-42ce-9aaf-f3ec7f1248b7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\00. ServerCore\93. Defines">
+      <UniqueIdentifier>{fab4b600-e275-47b2-bd34-a60a82fc0669}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ServerLib.cpp">
-      <Filter>소스 파일\03. ServerLib</Filter>
+      <Filter>소스 파일\00. ServerCore\03. ServerLib</Filter>
     </ClCompile>
     <ClCompile Include="Packet.cpp">
-      <Filter>소스 파일\02. Packet</Filter>
+      <Filter>소스 파일\00. ServerCore\02. Packet</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
-      <Filter>소스 파일\00. Main</Filter>
+      <Filter>소스 파일\00. ServerCore\00. Main</Filter>
     </ClCompile>
     <ClCompile Include="Session.cpp">
-      <Filter>소스 파일\05. Session</Filter>
+      <Filter>소스 파일\00. ServerCore\05. Session</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">
-      <Filter>소스 파일\99. pch</Filter>
+      <Filter>소스 파일\00. ServerCore\99. pch</Filter>
     </ClCompile>
     <ClCompile Include="CircularQueue.cpp">
-      <Filter>소스 파일\97. CircularQueue</Filter>
+      <Filter>소스 파일\00. ServerCore\97. CircularQueue</Filter>
     </ClCompile>
     <ClCompile Include="RingBuffer.cpp">
-      <Filter>소스 파일\01. RingBuffer</Filter>
+      <Filter>소스 파일\00. ServerCore\01. RingBuffer</Filter>
     </ClCompile>
     <ClCompile Include="CrashDump.cpp">
-      <Filter>소스 파일\96. CrashDump</Filter>
+      <Filter>소스 파일\00. ServerCore\96. CrashDump</Filter>
     </ClCompile>
     <ClCompile Include="IServer.cpp">
-      <Filter>소스 파일\03. ServerLib\Interface</Filter>
+      <Filter>소스 파일\00. ServerCore\03. ServerLib\Interface</Filter>
     </ClCompile>
     <ClCompile Include="SystemMonitor.cpp">
-      <Filter>소스 파일\95. SystemMonitor</Filter>
+      <Filter>소스 파일\00. ServerCore\95. SystemMonitor</Filter>
     </ClCompile>
     <ClCompile Include="cpuUsage.cpp">
-      <Filter>소스 파일\95. SystemMonitor\cpuUsage</Filter>
+      <Filter>소스 파일\00. ServerCore\95. SystemMonitor\cpuUsage</Filter>
     </ClCompile>
-    <ClCompile Include="Timer.cpp">
-      <Filter>소스 파일\06. Timer</Filter>
+    <ClCompile Include="TimerManager.cpp">
+      <Filter>소스 파일\00. ServerCore\06. Timer</Filter>
     </ClCompile>
     <ClCompile Include="ContentManager.cpp">
-      <Filter>소스 파일\04. Content\Manager</Filter>
+      <Filter>소스 파일\00. ServerCore\04. Content\Manager</Filter>
     </ClCompile>
     <ClCompile Include="Managers.cpp">
-      <Filter>소스 파일\07. Managers</Filter>
+      <Filter>소스 파일\00. ServerCore\07. Managers</Filter>
     </ClCompile>
     <ClCompile Include="ChattingContent.cpp">
-      <Filter>소스 파일\04. Content\MainContent\01. Chatting</Filter>
+      <Filter>소스 파일\01. Contents\MainContent\01. Chatting</Filter>
+    </ClCompile>
+    <ClCompile Include="Object.cpp">
+      <Filter>소스 파일\00. ServerCore\08. Object</Filter>
     </ClCompile>
     <ClCompile Include="Content.cpp">
-      <Filter>소스 파일\04. Content\Manager\Content</Filter>
+      <Filter>소스 파일\00. ServerCore\04. Content</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ServerLib.h">
-      <Filter>소스 파일\03. ServerLib</Filter>
+      <Filter>소스 파일\00. ServerCore\03. ServerLib</Filter>
     </ClInclude>
     <ClInclude Include="Packet.h">
-      <Filter>소스 파일\02. Packet</Filter>
+      <Filter>소스 파일\00. ServerCore\02. Packet</Filter>
     </ClInclude>
     <ClInclude Include="RingBuffer.h">
-      <Filter>소스 파일\01. RingBuffer</Filter>
+      <Filter>소스 파일\00. ServerCore\01. RingBuffer</Filter>
     </ClInclude>
     <ClInclude Include="IServer.h">
-      <Filter>소스 파일\03. ServerLib\Interface</Filter>
+      <Filter>소스 파일\00. ServerCore\03. ServerLib\Interface</Filter>
     </ClInclude>
     <ClInclude Include="Session.h">
-      <Filter>소스 파일\05. Session</Filter>
+      <Filter>소스 파일\00. ServerCore\05. Session</Filter>
     </ClInclude>
     <ClInclude Include="pch.h">
-      <Filter>소스 파일\99. pch</Filter>
+      <Filter>소스 파일\00. ServerCore\99. pch</Filter>
     </ClInclude>
     <ClInclude Include="Protocol.h">
-      <Filter>소스 파일\98. Protocol</Filter>
+      <Filter>소스 파일\00. ServerCore\98. Protocol</Filter>
     </ClInclude>
     <ClInclude Include="CircularQueue.h">
-      <Filter>소스 파일\97. CircularQueue</Filter>
+      <Filter>소스 파일\00. ServerCore\97. CircularQueue</Filter>
     </ClInclude>
     <ClInclude Include="CrashDump.h">
-      <Filter>소스 파일\96. CrashDump</Filter>
+      <Filter>소스 파일\00. ServerCore\96. CrashDump</Filter>
     </ClInclude>
     <ClInclude Include="SystemMonitor.h">
-      <Filter>소스 파일\95. SystemMonitor</Filter>
+      <Filter>소스 파일\00. ServerCore\95. SystemMonitor</Filter>
     </ClInclude>
     <ClInclude Include="cpuUsage.h">
-      <Filter>소스 파일\95. SystemMonitor\cpuUsage</Filter>
+      <Filter>소스 파일\00. ServerCore\95. SystemMonitor\cpuUsage</Filter>
     </ClInclude>
-    <ClInclude Include="Timer.h">
-      <Filter>소스 파일\06. Timer</Filter>
+    <ClInclude Include="TimerManager.h">
+      <Filter>소스 파일\00. ServerCore\06. Timer</Filter>
     </ClInclude>
     <ClInclude Include="MemoryPool.h">
-      <Filter>소스 파일\94. MemoryPool</Filter>
+      <Filter>소스 파일\00. ServerCore\94. MemoryPool</Filter>
     </ClInclude>
     <ClInclude Include="concurrent_stack.h">
-      <Filter>소스 파일\94. MemoryPool\lockfreeStack</Filter>
+      <Filter>소스 파일\00. ServerCore\94. MemoryPool\lockfreeStack</Filter>
     </ClInclude>
     <ClInclude Include="ContentManager.h">
-      <Filter>소스 파일\04. Content\Manager</Filter>
+      <Filter>소스 파일\00. ServerCore\04. Content\Manager</Filter>
     </ClInclude>
     <ClInclude Include="Managers.h">
-      <Filter>소스 파일\07. Managers</Filter>
+      <Filter>소스 파일\00. ServerCore\07. Managers</Filter>
     </ClInclude>
     <ClInclude Include="ChattingContent.h">
-      <Filter>소스 파일\04. Content\MainContent\01. Chatting</Filter>
-    </ClInclude>
-    <ClInclude Include="Content.h">
-      <Filter>소스 파일\04. Content\Manager\Content</Filter>
+      <Filter>소스 파일\01. Contents\MainContent\01. Chatting</Filter>
     </ClInclude>
     <ClInclude Include="ContentType.h">
-      <Filter>소스 파일\04. Content\MainContent</Filter>
+      <Filter>소스 파일\01. Contents\MainContent</Filter>
     </ClInclude>
     <ClInclude Include="Singleton.h">
-      <Filter>소스 파일\07. Managers</Filter>
+      <Filter>소스 파일\00. ServerCore\07. Managers</Filter>
+    </ClInclude>
+    <ClInclude Include="Object.h">
+      <Filter>소스 파일\00. ServerCore\08. Object</Filter>
+    </ClInclude>
+    <ClInclude Include="Content.h">
+      <Filter>소스 파일\00. ServerCore\04. Content</Filter>
+    </ClInclude>
+    <ClInclude Include="Defines.h">
+      <Filter>소스 파일\00. ServerCore\93. Defines</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

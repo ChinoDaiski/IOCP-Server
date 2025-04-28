@@ -7,7 +7,6 @@
 #pragma comment(lib, "Pdh.lib")
 
 #include "cpuUsage.h"
-#include "Timer.h"
 
 #define df_PDH_ETHERNET_MAX 8
 //--------------------------------------------------------------
@@ -69,6 +68,4 @@ private:
 
     // CPU 전체 사용률 및 프로세스 CPU 사용률 측정
     CCpuUsage CPUTime; // CPUTime(hProcess)
-
-    CTimer processTimer;
 };

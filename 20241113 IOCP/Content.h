@@ -35,6 +35,7 @@ public:
 
     // 세션 관리
     void AddSession(CSession* s);
+    void RequestSessionDelete(CSession* s);    // 세션의 isAlive가 false 된 이후 IOCount가 0이 되어 네트워크 쪽에서 삭제를 요청할 때 사용
     void ExitSession(CSession* s, int id = NO_TRANSFER_SESSION);    // id 값을 주면 다른 컨텐츠에 세션을 추가, 만약 다른 컨텐츠로 이동하지 않고 세션을 종료하고 싶다면 id에 값을 주지 않으면 됨
 
     // 프레임 이벤트 처리. 내부에서 OnSessionEnter, OnSessionLeave, Update 호출됨. 워커스레드는 이 Tick 함수를 처리함.
@@ -51,6 +52,9 @@ private:
     // 임시 저장: 새로 들어온 세션, 나갈 세션
     std::vector<CSession*> incomingSessions;
     std::vector<std::pair<int, CSession*>> outgoingSessions;
+
+    // 삭제 요청이 들어온 세션
+    std::vector<CSession*> requestDeleteSessions;
 
     // 패킷 큐
     tbb::concurrent_queue<CPacket*> packetQueue;

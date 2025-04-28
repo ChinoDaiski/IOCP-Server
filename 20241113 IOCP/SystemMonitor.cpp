@@ -2,6 +2,9 @@
 #include "SystemMonitor.h"
 #include <iostream>
 
+#include "Managers.h"
+#include "TimerManager.h"
+
 SystemMonitor::SystemMonitor(void)
     : queryHandle(nullptr)
 {
@@ -155,7 +158,7 @@ void SystemMonitor::PrintMonitoringData(void)
 {
     //================================================================================================================================
     // 프로세스가 시작되고 나서 흐른 시간 측정
-    processTimer.PrintElapsedTime();
+    Managers::GetInstance().Timer()->PrintElapsedTime();
     //================================================================================================================================
 
 

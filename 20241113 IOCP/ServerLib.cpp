@@ -11,6 +11,8 @@
 #include "Managers.h"
 #include "ContentManager.h"
 
+#include "Object.h"
+
 bool CGameServer::Start(unsigned long ip, int port, int workerThreadCount, int runningThreadCount, bool nagleOption, int maxSessionCount, int pendingAcceptCount)
 {
     // 타이머 인터벌을 1ms로 줄임. 서버의 퀀텀이 길기에 타이머 인터벌을 줄여 비동기 작업의 지연이 퀀텀이 길어서 확인되까지 걸리는 시간을 줄임으로서 낭비하는 시간이 없어져 성능이 올라간다고 추측.
@@ -122,7 +124,21 @@ bool CGameServer::Disconnect(UINT64 sessionID)
     // 세션 종료 처리, 컨텐츠 쪽에서 먼저 호출하는 함수로 컨텐츠 객체가 소멸되고 나서 서버에 알려주는 형식.
     // 서버에선 완료통지가 모두 와야 삭제되므로 우선 삭제 예정인 flag가 올려두고 IO Count가 0이 되면 closesocket과 삭제를 한다.
     
-    
+    // 세션 검색
+    UINT16 index = static_cast<UINT16>(sessionID);
+    CSession* pSession = &sessions[index];
+
+    // 세션을 찾았다면
+    if (pSession->id == sessionID)
+    {
+        pSession->networkAlive = false;
+    }
+    // 아니라면 재활용되면서 이상한 값이 나올 수 있다.
+    else
+    {
+        DebugBreak();
+        return false;
+    }
 
     return true;
 }
@@ -209,15 +225,38 @@ void CGameServer::OnAccept(UINT64 sessionID)
 
 void CGameServer::OnRelease(UINT64 sessionID)
 {
-    // 해당 세션 id를 가진 플레이어를 검색
+    // 해당 세션 id를 가진 플레이어를 검색하여 컨텐츠 부분에서 삭제를 요청
+
+    // 세션 검색
+    UINT16 index = static_cast<UINT16>(sessionID);
+    CSession* pSession = &sessions[index];
+
+    // 세션을 가진 컨텐츠에게 해당 세션 삭제를 요청
+    pSession->pObj->SetDead();
+    Managers::GetInstance().Content()->removeSession(pSession);
 
     // 해당 플레이어를 삭제
+
+
+
 
     // 여기선 에코 테스트 서버니깐 아무것도 하지 않음.
 }
 
 void CGameServer::OnRecv(UINT64 sessionID, CPacket* pPacket)
 {
+    // 세션 검색
+    UINT16 index = static_cast<UINT16>(sessionID);
+    CSession* pSession = &sessions[index];
+
+    //if (pSession->pObj->isDead()) {
+    //    pSession->networkAlive = false;
+    //    return;
+    //}
+
+    //Managers::GetInstance().Content().
+
+
     // 여기서 컨텐츠 처리가 들어감.
     // ~ 컨텐츠 ~
     // 컨텐츠 처리를 하면서 패킷을 만들어 SendPacket를 호출
@@ -460,19 +499,16 @@ CSession* CGameServer::FetchSession(void)
     // 상위 6byte는 접속마다 1씩 증가하는 uniqueSessionID 값을 넣는다.
 
     // 전체 64bit중 상위 48bit를 사용
-    sessionID = uniqueSessionID;
+    sessionID = static_cast<UINT64>(InterlockedIncrement64(reinterpret_cast<volatile LONGLONG*>(&uniqueSessionID))); // 사용한 uniqueSessionID는 중복 방지를 위해 1증가
     sessionID <<= 16;
 
-    // 사용한 uniqueSessionID는 중복 방지를 위해 1증가
-    uniqueSessionID++;
-
-    EnterCriticalSection(&cs_sessionID);
+    //EnterCriticalSection(&cs_sessionID);
 
     // 사용하지 않는 배열 인덱스를 찾음
     UINT16 sessionIndex;
     while (!stSessionIndex.pop(sessionIndex));
 
-    LeaveCriticalSection(&cs_sessionID);
+    //LeaveCriticalSection(&cs_sessionID);
 
     // 세션접속 수 1 증가
     InterlockedIncrement(&curSessionCnt);
@@ -485,7 +521,7 @@ CSession* CGameServer::FetchSession(void)
 
 void CGameServer::returnSession(CSession* pSession)
 {
-    EnterCriticalSection(&cs_sessionID);
+    //EnterCriticalSection(&cs_sessionID);
 
     // sendQ에 아직 처리되지 못한 패킷들 정리
     pSession->sendQ.ClearQueue();
@@ -494,19 +530,19 @@ void CGameServer::returnSession(CSession* pSession)
     closesocket(pSession->sock);
     pSession->sock = INVALID_SOCKET;
 
-    // 인자로 받은 세션이 위치한 배열 인덱스를 반환
-    stSessionIndex.push(static_cast<UINT16>(pSession->id));
+    // 세션을 삭제했으니 이후에 콘텐츠에게 세션이 삭제되었음을 알리는 코드가 들어감
+    OnRelease(pSession->id);
 
-    LeaveCriticalSection(&cs_sessionID);
+    // 콘텐츠까지 처리가 완료되고 나서, 인자로 받은 세션이 위치한 배열 인덱스를 반환
+    stSessionIndex.push(static_cast<UINT16>(pSession->id)); // id에서 하위 16bit만 추출해서 반환
+
+    //LeaveCriticalSection(&cs_sessionID);
 
     // 세션접속 수 1 감소
     InterlockedDecrement(&curSessionCnt);
 
     // 연결이 끊어진 수 1 증가
     InterlockedIncrement(&disconnectedSessionCnt);
-
-    // 세션을 삭제했으니 이후에 콘텐츠에게 세션이 삭제되었음을 알리는 코드가 들어감
-    OnRelease(pSession->id);
 
     // 세션이 삭제되었으므로 curPendingSessionCnt 1 감소
     InterlockedDecrement(&curPendingSessionCnt);
@@ -536,7 +572,7 @@ void CGameServer::InitSessionInfo(CSession* pSession)
     pSession->recvQ.ClearBuffer(); 
     
     // 해당 세션이 살아있는지 여부, 첫 값은 TRUE로 컨텐츠 쪽에서 끊었을 경우에만 0으로 변경한다.
-    pSession->isAlive = 1;
+    pSession->networkAlive = 1;
 }
 
 void CGameServer::loadIPList(const std::string& filePath, std::unordered_set<std::string>& IPList)

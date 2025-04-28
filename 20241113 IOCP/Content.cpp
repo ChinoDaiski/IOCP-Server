@@ -30,6 +30,11 @@ void Content::AddSession(CSession* s)
     incomingSessions.push_back(s);
 }
 
+void Content::RequestSessionDelete(CSession* s)
+{
+    requestDeleteSessions.push_back(s);
+}
+
 void Content::ExitSession(CSession* s, int id)
 {
     auto it = std::find(managedSessions.begin(), managedSessions.end(), s);
@@ -93,7 +98,7 @@ void Content::Tick()
 
             // 세션이 다른 컨텐츠로 가지 않는다면, 세션을 종료
             if (session.first == NO_TRANSFER_SESSION)
-                session.second->isAlive = 0;
+                session.second->networkAlive = 0;
             // 만약 다른 컨텐츠로 간다면, 해당 컨텐츠로 세션을 이동
             else
                 pContentManager->transferSession(session.first, session.second);
